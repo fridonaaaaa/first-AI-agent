@@ -4,23 +4,26 @@
 Phase 0 — Foundation and spikes
 
 ## Last finished item
-Repo skeleton: folder structure, FastAPI /health, settings, errors, logging, DB schema SQL, build_subset.py
+Spike C complete: 50,003 unique paragraphs measured (seed=42, validation split only).
+Storage math done: 384-dim recommended (~287 MB), fits free DB tier.
+LLM provider decided: Gemini.
 
 ## In progress
-- Phase 0 spikes: embedding model selection, LLM provider selection, storage math
+Phase 1 — Ingestion pipeline
 
 ## Next
-1. Install dependencies and run the health test
-2. Run scripts/build_subset.py and report unique paragraph count
-3. Spike A: test 2–3 multilingual embedding models for Georgian support
-4. Spike B: test Gemini/Groq free tiers for Georgian quality + tool-calling
-5. Spike C: storage math from real unique paragraph count
+1. **Owner action required:** Verify Neon or Supabase free storage cap and pick the DB host.
+2. **Owner action required:** Get Gemini API key; verify current free model name and rate limits at ai.google.dev.
+3. Phase 1: parsers (md/txt, HTML, PDF, JSONL)
+4. Phase 1: two chunkers (fixed-token-overlap, sentence-window)
+5. Phase 1: dedupe.py (owner-defended — stop for review after)
+6. Phase 1: document registry (add/update/delete/list)
+7. Phase 1: bulk HotpotQA loader
 
 ## Blockers
-- Unique paragraph count: UNVERIFIED (need to run build_subset.py)
-- Free-tier limits for Neon/Supabase/Render/HF Spaces: UNVERIFIED
-- Free-tier limits for Gemini/Groq: UNVERIFIED
-- Which embedding model supports Georgian best: UNVERIFIED
+- Free-tier storage cap for Neon/Supabase: UNVERIFIED (owner must check)
+- Gemini free model name + rate limits: UNVERIFIED (owner must check ai.google.dev)
+- Embedding model for Georgian: decided to use 384-dim multilingual model (paraphrase-multilingual-MiniLM-L12-v2); Georgian support UNVERIFIED on model card
 
 ## Test status
-- tests/test_health.py: PENDING (dependencies not installed yet)
+- tests/test_health.py: PASSING (1/1)

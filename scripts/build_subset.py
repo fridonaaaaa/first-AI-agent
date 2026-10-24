@@ -67,7 +67,7 @@ def build_subset(seed: int, target: int) -> dict:
 
     for split in ("validation", "train"):
         print(f"Loading HotpotQA distractor/{split} …")
-        dataset = load_dataset("hotpotqa/hotpot_qa", "distractor", split=split, trust_remote_code=True)
+        dataset = load_dataset("hotpotqa/hotpot_qa", "distractor", split=split)
 
         indices = list(range(len(dataset)))
         rng.shuffle(indices)

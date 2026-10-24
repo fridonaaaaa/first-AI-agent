@@ -46,3 +46,44 @@ Each entry: what was decided, why, and which alternatives were rejected.
 - Elasticsearch for BM25 — rejected; assignment requires own implementation.
 
 **Changed by owner:**
+
+---
+
+## 2026-10-24 — LLM provider: Gemini
+
+**Decision:** `LLM_PROVIDER=gemini`. Owner confirmed Gemini as the free LLM provider.
+
+**UNVERIFIED items (owner must check before Phase 3):**
+- Current free-tier model name (check ai.google.dev — likely `gemini-1.5-flash` or `gemini-2.0-flash`).
+- Current free-tier rate limits (RPM / TPD). Paste the source URL here once checked.
+- Tool-calling (function calling) support on the free model — required for Phase 3 tool loop.
+
+**Alternatives rejected:** Groq (owner chose Gemini).
+
+**Changed by owner:**
+
+---
+
+## 2026-10-24 — Corpus size (Spike C: storage math)
+
+**Measured:** `scripts/build_subset.py` with seed=42 produced **50,003 unique paragraphs** from 5,420 of 7,405 validation questions. Train split untouched.
+
+**Storage estimate (Spike C):**
+
+Assumptions: ~2 chunks per paragraph on average (short HotpotQA paragraphs, ~150–250 tokens). Estimated 100,000 chunks total.
+
+| Component | 384-dim | 768-dim |
+|---|---|---|
+| Vectors (100k x dims x 4 bytes) | 153 MB | 307 MB |
+| Text (100k chunks x ~300 bytes avg) | 30 MB | 30 MB |
+| BM25 postings (100k x ~30 terms x 28 bytes) | 84 MB | 84 MB |
+| Stats + metadata + indexes | ~20 MB | ~20 MB |
+| **Total** | **~287 MB** | **~441 MB** |
+
+**Free DB storage caps — UNVERIFIED. Owner must check before Phase 2:**
+- Neon: neon.tech/pricing
+- Supabase: supabase.com/pricing
+
+**Recommendation:** Use 384-dim embedding model. ~287 MB fits under a 512 MB free cap with headroom. 768-dim (~441 MB) is too tight.
+
+**Changed by owner:**
