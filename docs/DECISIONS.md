@@ -87,3 +87,20 @@ Assumptions: ~2 chunks per paragraph on average (short HotpotQA paragraphs, ~150
 **Recommendation:** Use 384-dim embedding model. ~287 MB fits under a 512 MB free cap with headroom. 768-dim (~441 MB) is too tight.
 
 **Changed by owner:**
+
+---
+
+## 2026-10-24 — DB host: Supabase
+
+**Decision:** Use Supabase free tier for Postgres + pgvector.
+
+**Owner must verify before Phase 2:** Current free storage cap at supabase.com/pricing. Estimated DB size ~287 MB (384-dim). Confirm it fits.
+
+**Connection string format** (goes in `.env` only, never committed):
+`DATABASE_URL=postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres`
+
+Find it in: Supabase dashboard → Project Settings → Database → Connection string → URI.
+
+**Alternatives rejected:** Neon (owner chose Supabase).
+
+**Changed by owner:**
