@@ -1,0 +1,15 @@
+{"id": "dev-001", "type": "simple", "question": "Who invented the telephone?", "answer": "Alexander Graham Bell", "supporting_titles": ["Alexander Graham Bell", "Telephone"], "language": "en"}
+{"id": "dev-002", "type": "simple", "question": "In what year was the Eiffel Tower built?", "answer": "1889", "supporting_titles": ["Eiffel Tower"], "language": "en"}
+{"id": "dev-003", "type": "simple", "question": "Who wrote the play Hamlet?", "answer": "William Shakespeare", "supporting_titles": ["Hamlet", "William Shakespeare"], "language": "en"}
+{"id": "dev-004", "type": "multi_hop", "question": "What country was the inventor of the World Wide Web born in?", "answer": "England", "supporting_titles": ["Tim Berners-Lee", "World Wide Web"], "language": "en"}
+{"id": "dev-005", "type": "multi_hop", "question": "What is the capital of the country where the Nobel Prize was founded?", "answer": "Stockholm", "supporting_titles": ["Nobel Prize", "Sweden"], "language": "en"}
+{"id": "dev-006", "type": "multi_hop", "question": "What sport did the founder of the modern Olympic Games compete in?", "answer": "rowing", "supporting_titles": ["Pierre de Coubertin", "Olympic Games"], "language": "en"}
+{"id": "dev-007", "type": "comparison", "question": "Which is older, the Colosseum or the Parthenon?", "answer": "the Parthenon", "supporting_titles": ["Colosseum", "Parthenon"], "language": "en"}
+{"id": "dev-008", "type": "comparison", "question": "Is Mount Everest or K2 taller?", "answer": "Mount Everest", "supporting_titles": ["Mount Everest", "K2"], "language": "en"}
+{"id": "dev-009", "type": "unanswerable", "question": "What did Napoleon eat for breakfast on June 18 1815?", "answer": "", "supporting_titles": [], "language": "en"}
+{"id": "dev-010", "type": "unanswerable", "question": "What is the name of Julius Caesar's childhood pet?", "answer": "", "supporting_titles": [], "language": "en"}
+{"id": "dev-011", "type": "georgian", "question": "ვინ გამოიგონა ტელეფონი?", "answer": "Alexander Graham Bell", "supporting_titles": ["Alexander Graham Bell"], "language": "ka"}
+{"id": "dev-012", "type": "georgian", "question": "სად არის ეიფელის კოშკი?", "answer": "Paris", "supporting_titles": ["Eiffel Tower"], "language": "ka"}
+{"id": "dev-013", "type": "multi_hop", "question": "What university did the person who discovered penicillin attend?", "answer": "University of London", "supporting_titles": ["Alexander Fleming", "Penicillin"], "language": "en"}
+{"id": "dev-014", "type": "multi_hop", "question": "In which city was the painter of the Mona Lisa born?", "answer": "Vinci", "supporting_titles": ["Leonardo da Vinci", "Mona Lisa"], "language": "en"}
+{"id": "dev-015", "type": "simple", "question": "What element has the chemical symbol Au?", "answer": "Gold", "supporting_titles": ["Gold"], "language": "en"}

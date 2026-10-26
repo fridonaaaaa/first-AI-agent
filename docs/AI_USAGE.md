@@ -23,3 +23,105 @@ Log of what Claude Code generated each session. Owner fills in "Changed by owner
 - Spike script stubs: `scripts/spikes/spike_embeddings.py`, `scripts/spikes/spike_llm.py`
 
 **Changed by owner:**
+
+---
+
+## Session 2026-10-25 (Phase 1 — Ingestion)
+
+**Generated:**
+- `app/ingestion/parsers.py` — Markdown/TXT, HTML (BeautifulSoup), PDF (pdfminer.six), JSONL, HotpotQA format parsers
+- `app/ingestion/chunkers.py` — `fixed_token` and `sentence_window` chunking strategies
+- `app/ingestion/tokeniser.py` — shared BM25 tokeniser (lowercase, strip punctuation, no stopwords)
+- `app/ingestion/dedupe.py` — SimHash 64-bit near-duplicate detection (char-4-grams, Hamming ≤5); 148 lines [owner-defended]
+- `app/ingestion/registry.py` — `add_document`, `update_document`, `delete_document` with BM25 stats consistency
+- `scripts/load_hotpotqa.py` — loads HotpotQA validation split, seeds=42, 50 003 unique paragraphs
+- `tests/test_parsers.py`, `tests/test_chunkers.py`, `tests/test_dedupe.py`, `tests/test_tokeniser.py`, `tests/test_registry.py`
+- `docs/explain/dedupe.md` — algorithm walkthrough + 5 interview Q&A
+
+**Changed by owner:**
+
+---
+
+## Session 2026-10-25 (Phase 2 — Retrieval)
+
+**Generated:**
+- `app/retrieval/embeddings.py` — lazy SentenceTransformer singleton, `encode()`, `encode_one()`
+- `app/retrieval/vector_store.py` — `search_dense()` using pgvector cosine (`<=>`)
+- `app/retrieval/bm25.py` — Okapi BM25, normalised TF stored in DB, IDF from `bm25_stats`; 147 lines [owner-defended]
+- `app/retrieval/fusion.py` — Reciprocal Rank Fusion: score = Σ 1/(k + rank_i); 47 lines [owner-defended]
+- `app/retrieval/rerank.py` — coverage-aware MMR reranker: λ·rel + (1-λ)·gain − dup_penalty; 136 lines [owner-defended]
+- `app/retrieval/hybrid.py` — wires dense + BM25 + RRF + reranker into `hybrid_search()`
+- `scripts/embed_corpus.py` — bulk embedding job (batch 64, resume-safe, --dry-run flag)
+- `tests/test_embeddings.py`, `tests/test_bm25.py`, `tests/test_fusion.py`, `tests/test_rerank.py`, `tests/test_hybrid.py`
+- `docs/explain/bm25.md`, `docs/explain/fusion.md`, `docs/explain/rerank.py.md`
+
+**Changed by owner:**
+
+---
+
+## Session 2026-10-25 (Phase 3 — RAG Pipeline)
+
+**Generated:**
+- `app/rag/llm/base.py` — `LLMClient` ABC, `LLMResponse`, `complete_json()` (strips markdown fences)
+- `app/rag/llm/mock.py` — `MockLLMClient` with scriptable responses dict, `calls` log
+- `app/rag/llm/gemini.py` — Gemini REST client, 4-retry exponential backoff (2s base), SHA-256 disk cache
+- `app/rag/llm/factory.py` — `get_llm_client()` from `LLM_PROVIDER` env var
+- `app/rag/query_understanding.py` — Georgian detection, translate → rewrite → decompose (≤4 sub-queries)
+- `app/rag/citation.py` — `extract_citations()`, `verify_citations()` (strips IDs not in retrieved set)
+- `app/rag/conflict.py` — dup-group + numeric-pair detection, LLM structured verdict (agree/conflict/unrelated)
+- `app/rag/abstention.py` — gate 1 (RRF score threshold), gate 2 (LLM sufficiency check)
+- `app/rag/pipeline.py` — `run_pipeline()` orchestrating all 8 steps, `PipelineResult`
+- `tests/test_query_understanding.py`, `tests/test_citation.py`, `tests/test_conflict.py`, `tests/test_abstention.py`, `tests/test_pipeline.py`
+
+**Changed by owner:**
+
+---
+
+## Session 2026-10-25 (Phase 4 — API + UI)
+
+**Generated:**
+- `app/api/auth.py` — `require_admin()` using `hmac.compare_digest` (timing-attack safe)
+- `app/api/middleware.py` — per-IP sliding-window rate limiter + global daily cap
+- `app/api/routes/ask.py` — POST /ask with rate limiting and graceful error handling
+- `app/api/routes/documents.py` — GET/POST/PUT/DELETE /documents, 1 MB text size limit
+- `app/api/routes/health.py` — GET /health (updated with DB connectivity check)
+- `app/main.py` (updated) — registers all routers, mounts `app/ui/` as static files
+- `app/ui/index.html` — Georgian single-page UI (ask panel + admin panel)
+- `app/ui/i18n.js` — all Georgian strings in one `I18N` object, `escHtml()` XSS guard
+- `tests/test_auth.py`, `tests/test_middleware.py`, `tests/test_routes_ask.py`, `tests/test_routes_documents.py`
+
+**Changed by owner:**
+
+---
+
+## Session 2026-10-26 (Phase 5 — Evaluation)
+
+**Generated:**
+- `eval/questions/dev.jsonl` — 15 DEV questions (simple, multi_hop, comparison, unanswerable, georgian)
+- `eval/questions/test.jsonl` — 25 TEST questions (same categories, never tuned on)
+- `eval/configs/c1_dense_only.json` — dense-only retrieval config
+- `eval/configs/c2_hybrid_rrf.json` — Dense + BM25 + RRF config
+- `eval/configs/c3_hybrid_rerank.json` — C2 + coverage reranker config
+- `eval/configs/c4_full_pipeline.json` — full pipeline with query decomposition
+- `scripts/eval_retrieval.py` — Recall@K and MRR (no LLM needed)
+- `scripts/eval_rag.py` — Answer F1, EM, citation precision, abstention accuracy; saves result JSON
+- `scripts/make_report.py` — generates `docs/EVAL_REPORT.md` from result JSON files
+- `tests/test_eval.py` — 20 unit tests for metric helpers + question/config format validation
+
+**Changed by owner:**
+
+---
+
+## Session 2026-10-26 (Phase 6 + Phase 7 — Docs + Deploy)
+
+**Generated:**
+- `README.md` — fully rewritten in Georgian with architecture diagram, usage, API table, eval instructions
+- `docs/ARCHITECTURE.md` — full layer diagram, DB schema, 8-step pipeline, owner-defended module table, security section
+- `docs/DEPLOYMENT.md` — complete deployment guide (Render free tier, Supabase, env vars, verification steps)
+- `docs/EVAL_REPORT.md` — template with table structure (numbers filled by `scripts/make_report.py` after live runs)
+- `docs/INTERVIEW_PREP.md` — interview Q&A drills for all 4 owner-defended modules + pipeline walkthrough
+- `.dockerignore` — excludes .env, .venv, data/, *.jsonl, docs/, eval/results/
+- `pyproject.toml` (updated) — added `sentence-transformers>=3.0`, `numpy>=1.26`
+- `scripts/embed_corpus.py` — bulk embedding script (created as Phase 2 gap was identified in Phase 6 audit)
+
+**Changed by owner:**

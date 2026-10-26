@@ -1,0 +1,13 @@
+.env
+.venv
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.cache
+data/
+*.jsonl
+.git
+.gitignore
+docs/
+eval/results/

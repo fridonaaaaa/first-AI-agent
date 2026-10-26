@@ -1,0 +1,13 @@
+{
+  "config_id": "C4",
+  "name": "full_pipeline",
+  "description": "Full pipeline: hybrid + reranker + query decomposition + tool loop",
+  "retrieval_mode": "hybrid_rerank",
+  "retrieval_top_k": 10,
+  "rrf_k": 60,
+  "bm25_k1": 1.5,
+  "bm25_b": 0.75,
+  "lambda_rerank": 0.5,
+  "use_reranker": true,
+  "use_decomposition": true
+}

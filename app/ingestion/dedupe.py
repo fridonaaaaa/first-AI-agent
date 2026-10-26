@@ -1,22 +1,11 @@
 """
-Duplicate detection for ingested chunks.
+Duplicate detection — two levels:
+  1. Exact dup: SHA-256 of normalised text → collapse, keep source as alias.
+  2. Near-dup: SimHash 64-bit fingerprint, hamming_distance <= threshold →
+     assign shared dup_group UUID. Never delete — conflicts are a feature.
 
-Two levels:
-1. Exact duplicate — identical normalised text hash (SHA-256).
-   Action: collapse to one record; keep all source URLs as aliases.
-
-2. Near-duplicate — similar but not identical text (e.g. same paragraph
-   with one changed number).  Detected with a hand-written SimHash.
-   Action: assign the same dup_group UUID so retrievers can find them.
-   Never delete near-duplicates — conflicting sources are a feature.
-
-SimHash algorithm (64-bit):
-  - Tokenise text into shingles (overlapping char n-grams of size k).
-  - For each shingle, compute a 64-bit hash.
-  - For each bit position b (0..63):
-      v[b] += +1 if bit b of hash is 1, else -1
-  - Final fingerprint: bit b = 1 if v[b] > 0 else 0.
-  - Two texts are near-duplicates when hamming_distance(fp_a, fp_b) <= threshold.
+SimHash: char-k-gram shingles → 64-bit hash each → vote vector v[0..63]
+(+1 if bit set, -1 if not) → bit b = 1 iff v[b] > 0.
 """
 
 import hashlib

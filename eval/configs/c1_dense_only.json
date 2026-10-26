@@ -1,0 +1,13 @@
+{
+  "config_id": "C1",
+  "name": "dense_only",
+  "description": "Dense vector search only — no BM25, no reranker",
+  "retrieval_mode": "dense_only",
+  "retrieval_top_k": 10,
+  "rrf_k": 60,
+  "bm25_k1": 1.5,
+  "bm25_b": 0.75,
+  "lambda_rerank": 0.5,
+  "use_reranker": false,
+  "use_decomposition": false
+}

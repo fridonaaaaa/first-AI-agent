@@ -104,3 +104,83 @@ Find it in: Supabase dashboard → Project Settings → Database → Connection 
 **Alternatives rejected:** Neon (owner chose Supabase).
 
 **Changed by owner:**
+
+---
+
+## 2026-10-26 — Coverage reranker: dup_penalty scaling
+
+**Decision:** Scale `dup_penalty` by `(1 − λ)` and zero it when `n_queries = 0`.
+
+**Why:** The dup_penalty exists solely to protect coverage diversity — it prevents
+selecting a near-duplicate when a different chunk could cover a new sub-query.
+When λ = 1.0 (pure relevance mode) or no sub-queries are given, there is no
+coverage goal, so the penalty would incorrectly demote near-duplicates in
+pure-relevance ranking.
+
+**Alternatives rejected:** Applying a fixed penalty always — broke `test_lambda_1_is_pure_relevance`
+and `test_no_sub_queries_preserves_rrf_order`.
+
+**Changed by owner:**
+
+---
+
+## 2026-10-26 — Coverage reranker: tie-breaking by (score, coverage_gain)
+
+**Decision:** Use tuple comparison `(score, gain) > (best_score, best_gain)` in the
+greedy loop so equal-score candidates are broken by coverage_gain.
+
+**Why:** At default λ = 0.5, the second-hop chunk C (rrf=0.3, covers new sq2) tied
+with chunk B (rrf=0.8, covers nothing new) at combined score 0.40. Without
+tie-breaking, B won by list position, defeating the purpose of the reranker.
+With the tie-break, C wins because gain=0.5 > gain=0.
+
+**Alternatives rejected:** Lowering default λ below 0.5 — changes the semantics for
+all queries, not just the edge case. Adding a tiny ε to gain — more obscure than a
+clean tuple comparison.
+
+**Changed by owner:**
+
+---
+
+## 2026-10-26 — Phase 2 retrieval modules complete
+
+**Decision:** Retrieval pipeline is:
+  1. `embeddings.py` — lazy-loaded SentenceTransformer singleton, returns `list[float]`
+  2. `vector_store.py` — pgvector `<=>` cosine distance, returns similarity = 1 − distance
+  3. `hybrid.py` — wires dense + BM25 + RRF + coverage rerank into one `hybrid_search()` call
+
+**Why these boundaries:** Each module has one job. `hybrid.py` owns zero algorithm
+logic — it only calls the four specialist modules and converts between their types.
+This makes each piece testable and explainable in isolation.
+
+**Alternatives rejected:** Single "retriever" class with all logic — violates single-purpose
+rule and makes interview explanation harder.
+
+**Changed by owner:**
+
+---
+
+## 2026-10-26 — Phase 6+7 documentation and Docker
+
+**Decision:** Dockerfile changed from `pip install -e ".[dev]"` to `pip install ".[dev]"`.
+
+**Why:** Editable installs require the source tree to be present and on `sys.path` as a
+live symlink. In a Docker container there is no development workflow — the code is copied in
+and never edited. A non-editable install is smaller, faster, and correct.
+
+**Alternatives rejected:** Keeping `-e` — it works but is semantically wrong for a container.
+
+---
+
+## 2026-10-26 — Render chosen as deployment target
+
+**Decision:** Render free Web Service (Docker runtime) as primary deployment target for Phase 7.
+
+**Why:** Render supports Docker natively on its free tier, has environment variable injection
+via dashboard (secrets never in image), auto-deploys on push, and provides a public HTTPS URL.
+Hugging Face Spaces Docker was also viable but has a 16 GB storage limit that the embedding
+model and corpus might approach.
+
+**Alternatives rejected:** Railway (free tier removed), Fly.io (requires credit card for free tier).
+
+**Changed by owner:**
