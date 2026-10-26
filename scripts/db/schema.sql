@@ -1,7 +1,7 @@
 -- Run once to set up the schema.
 -- Requires the pgvector extension to be available in the Postgres instance.
 
-CREATE EXTENSION IF NOT EXISTS pgvector;
+CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- ────────────────────────────────────────────────────────────
@@ -10,7 +10,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 -- ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS documents (
     id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    source          TEXT        NOT NULL,           -- URL or dataset ID (e.g. hotpotqa/abc123)
+    "source"        TEXT        NOT NULL,           -- URL or dataset ID (e.g. hotpotqa/abc123)
     title           TEXT        NOT NULL,
     format          TEXT        NOT NULL,           -- md | txt | html | pdf | jsonl
     version         INTEGER     NOT NULL DEFAULT 1,
