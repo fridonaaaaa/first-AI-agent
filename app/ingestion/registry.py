@@ -38,7 +38,9 @@ def _insert_chunk(cur, doc_id: str, chunk: Chunk, dup_group: str | None) -> tupl
     chunk_id = str(uuid.uuid4())
     chash = hashlib.sha256(chunk.text.encode()).hexdigest()
     tokens = tokenise(chunk.text)
-    meta = json.dumps(chunk.metadata)
+    token_count = len(tokens)
+    # token_count stored in metadata so BM25 can compute length normalisation
+    meta = json.dumps({**chunk.metadata, "token_count": token_count})
     cur.execute(
         """
         INSERT INTO chunks (id, doc_id, text, strategy, dup_group, position, content_hash, metadata)
@@ -47,7 +49,7 @@ def _insert_chunk(cur, doc_id: str, chunk: Chunk, dup_group: str | None) -> tupl
         (chunk_id, doc_id, chunk.text, chunk.strategy,
          dup_group, chunk.position, chash, meta),
     )
-    return chunk_id, len(tokens)
+    return chunk_id, token_count
 
 
 def _index_chunk(cur, chunk_id: str, chunk_text: str) -> int:
