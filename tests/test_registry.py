@@ -7,6 +7,7 @@ Run with: pytest tests/test_registry.py -v
 """
 
 import os
+import uuid
 import pytest
 
 from app.ingestion.chunkers import chunk_document
@@ -46,10 +47,12 @@ def conn():
     c.close()
 
 
-def _make_doc(title: str = "Test Doc", text: str = "This is a test document with enough words.") -> ParsedDocument:
+def _make_doc(title: str = "Test Doc", text: str = "") -> ParsedDocument:
+    # UUID suffix ensures each test run produces a fresh content_hash
+    unique_text = text + f" run={str(uuid.uuid4())[:8]}"
     return ParsedDocument(
         title=title,
-        text=text,
+        text=unique_text,
         source=f"test://registry/{title}",
         format="txt",
     )
