@@ -23,10 +23,10 @@ COPY --chown=appuser:appuser . .
 
 USER appuser
 
-EXPOSE 8000
+EXPOSE 7860
 
-# Render's health check hits /health; allow 60 s for model warm-up on cold start.
+# HF Spaces hits /health to verify the container is ready.
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+    CMD curl -f http://localhost:7860/health || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860", "--workers", "1"]
