@@ -85,7 +85,7 @@ def _stats_decrement(cur, terms: set[str]) -> None:
         return
     psycopg2.extras.execute_values(
         cur,
-        "UPDATE bm25_stats SET df = GREATEST(df - 1, 0) WHERE term = v.t FROM (VALUES %s) AS v(t)",
+        "UPDATE bm25_stats SET df = GREATEST(df - 1, 0) FROM (VALUES %s) AS v(t) WHERE term = v.t",
         [(t,) for t in terms],
     )
     cur.execute("DELETE FROM bm25_stats WHERE df = 0")
