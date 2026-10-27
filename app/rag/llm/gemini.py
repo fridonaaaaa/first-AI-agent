@@ -1,12 +1,11 @@
 """
 Gemini provider — wraps the Google Generative AI REST API via httpx.
 
-Uses the free `gemini-2.0-flash` model (verified 2026-10-26 at ai.google.dev).
-Rate limits on the free tier as of that date: 15 RPM, 1 million TPM, 1500 RPD.
-These change; check the console if quota errors appear.
+Uses gemini-3.1-flash-lite (verified working 2026-10-27 via models list API).
+Rate limits on the free tier: check ai.google.dev/gemini-api/docs/rate-limits.
 
 Retry strategy: exponential backoff on 429 (rate limit) and 5xx errors.
-Timeout: 30 s per request (configurable via max_retries / base_delay).
+Timeout: 60 s per request.
 Disk cache: responses are cached by SHA-256(provider+model+prompt+params) so
 eval reruns are free and reproducible.
 """
@@ -28,9 +27,9 @@ _API_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models"
     "/{model}:generateContent?key={key}"
 )
-_DEFAULT_MODEL = "gemini-2.0-flash"
-_MAX_RETRIES = 4
-_BASE_DELAY = 2.0   # seconds; doubles each retry
+_DEFAULT_MODEL = "gemini-3.1-flash-lite"
+_MAX_RETRIES = 2
+_BASE_DELAY = 1.5   # seconds; doubles each retry
 
 
 class GeminiClient(LLMClient):
@@ -96,7 +95,7 @@ class GeminiClient(LLMClient):
         delay = _BASE_DELAY
         for attempt in range(_MAX_RETRIES + 1):
             try:
-                with httpx.Client(timeout=30.0) as client:
+                with httpx.Client(timeout=60.0) as client:
                     r = client.post(url, json=body)
             except httpx.TimeoutException as exc:
                 if attempt == _MAX_RETRIES:

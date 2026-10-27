@@ -117,6 +117,39 @@ class BM25Searcher:
         )
         return [(row[0], row[1], row[2]) for row in cur.fetchall()]
 
+    def _fetch_all_terms(
+        self, tokens: list[str]
+    ) -> tuple[dict[str, int], dict[str, list[tuple[str, float, int]]]]:
+        """
+        Batch-fetch df and postings for all tokens in two queries instead of 2N.
+        Returns (df_map, postings_map).
+        Only used when a DB connection is available (not the in-memory path).
+        """
+        placeholders = ",".join(["%s"] * len(tokens))
+        cur = self._conn.cursor()
+
+        cur.execute(
+            f"SELECT term, df FROM bm25_stats WHERE term IN ({placeholders})",
+            tokens,
+        )
+        df_map: dict[str, int] = {row[0]: row[1] for row in cur.fetchall()}
+
+        cur.execute(
+            f"""
+            SELECT bp.term, bp.chunk_id, bp.tf,
+                   COALESCE((c.metadata->>'token_count')::int, 1) AS dl
+            FROM bm25_postings bp
+            JOIN chunks c ON c.id = bp.chunk_id
+            WHERE bp.term IN ({placeholders})
+            """,
+            tokens,
+        )
+        postings_map: dict[str, list[tuple[str, float, int]]] = {}
+        for term, chunk_id, tf, dl in cur.fetchall():
+            postings_map.setdefault(term, []).append((chunk_id, tf, dl))
+
+        return df_map, postings_map
+
     def search_index(self, query: str, top_k: int = 10) -> list[tuple[str, float]]:
         """
         Score all chunks matching any query term.
@@ -131,13 +164,26 @@ class BM25Searcher:
             return []
 
         scores: dict[str, float] = {}
-        for term in tokens:
-            df = self._get_term_df(term)
-            if df == 0:
-                continue
-            for chunk_id, tf_norm, dl in self._get_postings(term):
-                s = bm25_score(tf_norm, dl, avgdl, df, N, self.k1, self.b)
-                scores[chunk_id] = scores.get(chunk_id, 0.0) + s
+
+        if self._conn is not None:
+            # DB path: fetch all terms in two queries instead of 2N round-trips.
+            df_map, postings_map = self._fetch_all_terms(tokens)
+            for term in tokens:
+                df = df_map.get(term, 0)
+                if df == 0:
+                    continue
+                for chunk_id, tf_norm, dl in postings_map.get(term, []):
+                    s = bm25_score(tf_norm, dl, avgdl, df, N, self.k1, self.b)
+                    scores[chunk_id] = scores.get(chunk_id, 0.0) + s
+        else:
+            # In-memory path (used by unit tests via from_index()).
+            for term in tokens:
+                df = self._get_term_df(term)
+                if df == 0:
+                    continue
+                for chunk_id, tf_norm, dl in self._get_postings(term):
+                    s = bm25_score(tf_norm, dl, avgdl, df, N, self.k1, self.b)
+                    scores[chunk_id] = scores.get(chunk_id, 0.0) + s
 
         ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         return ranked[:top_k]

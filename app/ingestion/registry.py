@@ -14,6 +14,8 @@ import json
 import uuid
 from typing import Any
 
+import psycopg2.extras
+
 from app.ingestion.chunkers import Chunk
 from app.ingestion.dedupe import DedupeIndex, content_hash as compute_content_hash
 from app.ingestion.parsers import ParsedDocument
@@ -55,33 +57,37 @@ def _insert_chunk(cur, doc_id: str, chunk: Chunk, dup_group: str | None) -> tupl
 def _index_chunk(cur, chunk_id: str, chunk_text: str) -> int:
     """Insert BM25 postings for one chunk. Returns token count."""
     tokens = tokenise(chunk_text)
-    for term, tf in _tf(tokens).items():
-        cur.execute(
-            "INSERT INTO bm25_postings (term, chunk_id, tf) VALUES (%s, %s, %s) ON CONFLICT DO NOTHING",
-            (term, chunk_id, tf),
+    tf_dict = _tf(tokens)
+    if tf_dict:
+        psycopg2.extras.execute_values(
+            cur,
+            "INSERT INTO bm25_postings (term, chunk_id, tf) VALUES %s ON CONFLICT DO NOTHING",
+            [(term, chunk_id, tf) for term, tf in tf_dict.items()],
         )
     return len(tokens)
 
 
 def _stats_increment(cur, terms: set[str]) -> None:
-    """Increment df for each term; insert with df=1 if new."""
-    for term in terms:
-        cur.execute(
-            """
-            INSERT INTO bm25_stats (term, df, idf) VALUES (%s, 1, 0)
-            ON CONFLICT (term) DO UPDATE SET df = bm25_stats.df + 1
-            """,
-            (term,),
-        )
+    """Increment df for each term; insert with df=1 if new. Single round-trip via execute_values."""
+    if not terms:
+        return
+    psycopg2.extras.execute_values(
+        cur,
+        "INSERT INTO bm25_stats (term, df, idf) VALUES %s "
+        "ON CONFLICT (term) DO UPDATE SET df = bm25_stats.df + 1",
+        [(t, 1, 0) for t in terms],
+    )
 
 
 def _stats_decrement(cur, terms: set[str]) -> None:
     """Decrement df for each term; delete the row when df hits 0."""
-    for term in terms:
-        cur.execute(
-            "UPDATE bm25_stats SET df = GREATEST(df - 1, 0) WHERE term = %s",
-            (term,),
-        )
+    if not terms:
+        return
+    psycopg2.extras.execute_values(
+        cur,
+        "UPDATE bm25_stats SET df = GREATEST(df - 1, 0) WHERE term = v.t FROM (VALUES %s) AS v(t)",
+        [(t,) for t in terms],
+    )
     cur.execute("DELETE FROM bm25_stats WHERE df = 0")
 
 

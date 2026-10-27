@@ -7,133 +7,294 @@
   <script src="/i18n.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Segoe UI", system-ui, sans-serif;
-      background: #f4f6f9;
-      color: #1a1a2e;
-      min-height: 100vh;
+
+    :root {
+      --bg:        #f0f2f5;
+      --surface:   #ffffff;
+      --border:    #e2e5ea;
+      --primary:   #4f46e5;
+      --primary-h: #4338ca;
+      --text:      #111827;
+      --muted:     #6b7280;
+      --green-bg:  #f0fdf4;
+      --green-bd:  #86efac;
+      --amber-bg:  #fffbeb;
+      --amber-bd:  #fcd34d;
+      --red-bg:    #fff1f2;
+      --red-bd:    #fca5a5;
+      --tag-bg:    #eef2ff;
+      --tag-fg:    #4f46e5;
+      --radius:    10px;
+      --shadow:    0 1px 4px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.06);
     }
+
+    body {
+      font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    /* ── Header ── */
     header {
-      background: #16213e;
-      color: #e0e0e0;
-      padding: 1.2rem 2rem;
+      background: var(--primary);
+      color: #fff;
+      padding: 0 2rem;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(79,70,229,.3);
+    }
+    .header-brand { display: flex; align-items: center; gap: 0.6rem; }
+    .header-brand svg { opacity: .9; }
+    header h1 { font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em; }
+    header p  { font-size: 0.78rem; opacity: .75; }
+    nav { display: flex; gap: 0.25rem; }
+    nav button {
+      background: transparent;
+      color: rgba(255,255,255,.8);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 6px;
+      padding: 0.3rem 0.85rem;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+    }
+    nav button:hover, nav button.active {
+      background: rgba(255,255,255,.18);
+      color: #fff;
+    }
+
+    /* ── Layout ── */
+    main { max-width: 780px; margin: 2rem auto; padding: 0 1rem 4rem; }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.6rem;
+      box-shadow: var(--shadow);
+    }
+
+    /* ── Ask panel ── */
+    .form-label {
+      display: block;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: 0.4rem;
+    }
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 0.75rem 1rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 1rem;
+      font-family: inherit;
+      resize: vertical;
+      color: var(--text);
+      transition: border-color .15s;
+    }
+    textarea:focus { outline: none; border-color: var(--primary); }
+
+    .btn-primary {
+      margin-top: 0.75rem;
+      padding: 0.65rem 1.8rem;
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: background .15s, transform .1s;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--primary-h); transform: translateY(-1px); }
+    .btn-primary:active:not(:disabled) { transform: translateY(0); }
+    .btn-primary:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.4);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Answer ── */
+    #answer-section { margin-top: 1.5rem; display: none; }
+
+    .answer-card {
+      border-radius: var(--radius);
+      padding: 1.25rem 1.4rem;
+      border-left: 4px solid var(--green-bd);
+      background: var(--green-bg);
+      font-size: 1rem;
+      white-space: pre-wrap;
+      line-height: 1.7;
+    }
+    .answer-card.abstained {
+      border-color: var(--amber-bd);
+      background: var(--amber-bg);
+    }
+    .answer-card.error {
+      border-color: var(--red-bd);
+      background: var(--red-bg);
+    }
+    .answer-meta {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.5rem;
+      display: flex;
+      gap: 1rem;
+    }
+    .answer-meta span::before { content: "· "; }
+    .answer-meta span:first-child::before { content: ""; }
+
+    /* ── Section titles ── */
+    .section-head {
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin: 1.4rem 0 0.6rem;
+    }
+
+    /* ── Tags ── */
+    .tags { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .tag {
+      background: var(--tag-bg);
+      color: var(--tag-fg);
+      border-radius: 20px;
+      padding: 0.2rem 0.75rem;
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+
+    /* ── Source cards ── */
+    .source-card {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .source-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    header h1 { font-size: 1.4rem; font-weight: 700; }
-    header p  { font-size: 0.85rem; opacity: 0.7; margin-top: 0.2rem; }
-    nav a {
-      color: #90caf9;
-      text-decoration: none;
-      margin-left: 1.5rem;
-      font-size: 0.9rem;
+    .source-id {
+      font-size: 0.73rem;
+      font-family: "SF Mono", "Fira Code", monospace;
+      color: var(--muted);
     }
-    nav a:hover { text-decoration: underline; }
-
-    main { max-width: 860px; margin: 2rem auto; padding: 0 1rem; }
-
-    /* ── Ask panel ── */
-    #ask-panel { background: #fff; border-radius: 12px; padding: 1.8rem; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-    label { display: block; font-weight: 600; margin-bottom: 0.4rem; }
-    textarea {
-      width: 100%; min-height: 90px; padding: 0.8rem;
-      border: 1.5px solid #cdd; border-radius: 8px;
-      font-size: 1rem; resize: vertical;
+    .score-pill {
+      background: var(--tag-bg);
+      color: var(--tag-fg);
+      border-radius: 20px;
+      padding: 0.1rem 0.55rem;
+      font-size: 0.73rem;
+      font-weight: 600;
+      white-space: nowrap;
     }
-    textarea:focus { outline: none; border-color: #5c6bc0; }
-    button.primary {
-      margin-top: 0.8rem; padding: 0.7rem 2rem;
-      background: #3f51b5; color: #fff; border: none;
-      border-radius: 8px; font-size: 1rem; cursor: pointer;
-      transition: background .2s;
-    }
-    button.primary:hover { background: #303f9f; }
-    button.primary:disabled { background: #9e9e9e; cursor: default; }
-
-    /* ── Answer ── */
-    #answer-section { display: none; margin-top: 1.5rem; }
-    #answer-box {
-      background: #e8f5e9; border-left: 4px solid #43a047;
-      border-radius: 8px; padding: 1.2rem; white-space: pre-wrap;
-      font-size: 1rem; line-height: 1.6;
-    }
-    #answer-box.abstained { background: #fff8e1; border-color: #ffa000; }
-    .meta { font-size: 0.8rem; color: #666; margin-top: 0.5rem; }
-
-    /* ── Sub-queries ── */
-    #subq-section { margin-top: 1.2rem; }
-    .section-title { font-weight: 700; font-size: 0.95rem; margin-bottom: 0.5rem; color: #3f51b5; }
-    .tag {
-      display: inline-block; background: #e3f2fd; color: #1565c0;
-      border-radius: 20px; padding: 0.2rem 0.7rem;
-      font-size: 0.82rem; margin: 0.2rem 0.2rem 0.2rem 0;
+    .source-text {
+      font-size: 0.88rem;
+      color: #374151;
+      line-height: 1.55;
     }
 
-    /* ── Sources ── */
-    #sources-section { margin-top: 1.2rem; }
-    .source-card {
-      background: #fafafa; border: 1px solid #e0e0e0;
-      border-radius: 8px; padding: 0.8rem 1rem; margin-bottom: 0.6rem;
-    }
-    .source-id { font-size: 0.75rem; font-family: monospace; color: #555; }
-    .source-text { font-size: 0.9rem; margin-top: 0.3rem; color: #333; }
-    .score-badge {
-      display: inline-block; background: #e8eaf6; color: #3f51b5;
-      border-radius: 4px; padding: 0.1rem 0.4rem; font-size: 0.75rem; float: right;
-    }
-
-    /* ── Conflicts ── */
-    #conflicts-section { margin-top: 1.2rem; }
+    /* ── Conflict cards ── */
     .conflict-card {
-      background: #fff3e0; border: 1px solid #ffb74d;
-      border-radius: 8px; padding: 0.8rem 1rem; margin-bottom: 0.6rem;
+      border: 1px solid var(--amber-bd);
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 0.5rem;
+      background: var(--amber-bg);
+      font-size: 0.88rem;
     }
-    .conflict-card.agree { background: #e8f5e9; border-color: #81c784; }
-    .verdict-badge {
-      display: inline-block; border-radius: 4px; padding: 0.1rem 0.5rem;
-      font-size: 0.75rem; font-weight: 700;
+    .conflict-card.agree {
+      border-color: var(--green-bd);
+      background: var(--green-bg);
     }
-    .verdict-conflict { background: #ffccbc; color: #bf360c; }
-    .verdict-agree    { background: #c8e6c9; color: #1b5e20; }
+    .verdict-pill {
+      display: inline-block;
+      border-radius: 4px;
+      padding: 0.1rem 0.5rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      margin-right: 0.4rem;
+    }
+    .verdict-conflict { background: #fee2e2; color: #991b1b; }
+    .verdict-agree    { background: #dcfce7; color: #166534; }
 
     /* ── Admin panel ── */
-    #admin-panel {
-      display: none; background: #fff;
-      border-radius: 12px; padding: 1.8rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,.08); margin-top: 1rem;
+    #admin-panel { display: none; }
+    #admin-panel .card { margin-top: 0; }
+    .admin-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 1.2rem;
+      color: var(--text);
     }
-    #admin-panel h2 { font-size: 1.1rem; margin-bottom: 1rem; color: #333; }
-    .form-row { margin-bottom: 0.8rem; }
+    .form-row { margin-bottom: 0.9rem; }
     input[type=text], input[type=password] {
-      width: 100%; padding: 0.6rem 0.8rem;
-      border: 1.5px solid #cdd; border-radius: 6px; font-size: 0.95rem;
+      width: 100%;
+      padding: 0.6rem 0.85rem;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-family: inherit;
+      color: var(--text);
+      transition: border-color .15s;
     }
-    input:focus { outline: none; border-color: #5c6bc0; }
-    #admin-msg { margin-top: 0.6rem; font-size: 0.9rem; }
-    .ok  { color: #2e7d32; }
-    .err { color: #c62828; }
+    input:focus { outline: none; border-color: var(--primary); }
+    #admin-msg {
+      margin-top: 0.7rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    #admin-msg.ok  { color: #16a34a; }
+    #admin-msg.err { color: #dc2626; }
 
-    /* ── Loading spinner ── */
-    .spinner {
-      display: inline-block; width: 18px; height: 18px;
-      border: 3px solid #fff; border-top-color: transparent;
-      border-radius: 50%; animation: spin .7s linear infinite;
-      vertical-align: middle; margin-right: 6px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    /* ── Empty state ── */
+    .empty { color: var(--muted); font-size: 0.9rem; font-style: italic; }
   </style>
 </head>
 <body>
 
 <header>
-  <div>
-    <h1 id="app-title"></h1>
-    <p id="app-subtitle"></p>
+  <div class="header-brand">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <div>
+      <h1 id="app-title"></h1>
+      <p id="app-subtitle"></p>
+    </div>
   </div>
   <nav>
-    <a href="#" id="nav-ask" onclick="showPanel('ask')"></a>
-    <a href="#" id="nav-admin" onclick="showPanel('admin')"></a>
+    <button id="nav-ask"   onclick="showPanel('ask')"   class="active"></button>
+    <button id="nav-admin" onclick="showPanel('admin')"></button>
   </nav>
 </header>
 
@@ -141,27 +302,28 @@
 
   <!-- Ask panel -->
   <div id="ask-panel">
-    <label id="question-label" for="question"></label>
-    <textarea id="question" rows="3"></textarea>
-    <br/>
-    <button class="primary" id="submit-btn" onclick="submitQuestion()"></button>
+    <div class="card">
+      <label class="form-label" id="question-label" for="question"></label>
+      <textarea id="question" rows="3"></textarea>
+      <button class="btn-primary" id="submit-btn" onclick="submitQuestion()"></button>
+    </div>
 
     <div id="answer-section">
-      <div id="answer-box"></div>
-      <div class="meta" id="answer-meta"></div>
+      <div id="answer-box" class="answer-card"></div>
+      <div class="answer-meta" id="answer-meta"></div>
 
-      <div id="subq-section">
-        <div class="section-title" id="subq-title"></div>
-        <div id="subq-tags"></div>
+      <div id="subq-section" style="display:none">
+        <div class="section-head" id="subq-title"></div>
+        <div class="tags" id="subq-tags"></div>
       </div>
 
       <div id="conflicts-section" style="display:none">
-        <div class="section-title" id="conflicts-title"></div>
+        <div class="section-head" id="conflicts-title"></div>
         <div id="conflicts-list"></div>
       </div>
 
       <div id="sources-section">
-        <div class="section-title" id="sources-title"></div>
+        <div class="section-head" id="sources-title"></div>
         <div id="sources-list"></div>
       </div>
     </div>
@@ -169,60 +331,61 @@
 
   <!-- Admin panel -->
   <div id="admin-panel">
-    <h2 id="admin-title"></h2>
-    <div class="form-row">
-      <label id="token-label" for="admin-token"></label>
-      <input type="password" id="admin-token" autocomplete="current-password" />
+    <div class="card">
+      <div class="admin-title" id="admin-title"></div>
+      <div class="form-row">
+        <label class="form-label" id="token-label" for="admin-token"></label>
+        <input type="password" id="admin-token" autocomplete="current-password" />
+      </div>
+      <div class="form-row">
+        <label class="form-label" id="doc-title-label" for="doc-title"></label>
+        <input type="text" id="doc-title" />
+      </div>
+      <div class="form-row">
+        <label class="form-label" id="doc-source-label" for="doc-source"></label>
+        <input type="text" id="doc-source" placeholder="https://..." />
+      </div>
+      <div class="form-row">
+        <label class="form-label" id="doc-text-label" for="doc-text"></label>
+        <textarea id="doc-text" rows="6"></textarea>
+      </div>
+      <button class="btn-primary" id="upload-btn" onclick="uploadDocument()"></button>
+      <div id="admin-msg"></div>
     </div>
-    <div class="form-row">
-      <label id="doc-title-label" for="doc-title"></label>
-      <input type="text" id="doc-title" />
-    </div>
-    <div class="form-row">
-      <label id="doc-source-label" for="doc-source"></label>
-      <input type="text" id="doc-source" placeholder="https://..." />
-    </div>
-    <div class="form-row">
-      <label id="doc-text-label" for="doc-text"></label>
-      <textarea id="doc-text" rows="5"></textarea>
-    </div>
-    <button class="primary" id="upload-btn" onclick="uploadDocument()"></button>
-    <div id="admin-msg"></div>
   </div>
 
 </main>
 
 <script>
-// ── i18n wiring ──────────────────────────────────────────────────────────────
 function t(key) { return I18N[key] || key; }
 
 function applyI18n() {
-  document.title                              = t("appTitle");
-  document.getElementById("app-title").textContent    = t("appTitle");
-  document.getElementById("app-subtitle").textContent = t("appSubtitle");
-  document.getElementById("nav-ask").textContent      = t("appTitle").split(" ")[0];
-  document.getElementById("nav-admin").textContent    = t("adminTitle");
+  document.title = t("appTitle");
+  document.getElementById("app-title").textContent      = t("appTitle");
+  document.getElementById("app-subtitle").textContent   = t("appSubtitle");
+  document.getElementById("nav-ask").textContent        = "ძიება";
+  document.getElementById("nav-admin").textContent      = t("adminTitle");
   document.getElementById("question-label").textContent = t("questionLabel");
-  document.getElementById("question").placeholder      = t("questionPlaceholder");
-  document.getElementById("submit-btn").textContent    = t("submitButton");
-  document.getElementById("subq-title").textContent    = t("subQueriesTitle");
-  document.getElementById("sources-title").textContent = t("sourcesTitle");
+  document.getElementById("question").placeholder       = t("questionPlaceholder");
+  document.getElementById("submit-btn").textContent     = t("submitButton");
+  document.getElementById("subq-title").textContent     = t("subQueriesTitle");
+  document.getElementById("sources-title").textContent  = t("sourcesTitle");
   document.getElementById("conflicts-title").textContent = t("conflictsTitle");
-  document.getElementById("admin-title").textContent   = t("adminTitle");
-  document.getElementById("token-label").textContent   = t("tokenLabel");
+  document.getElementById("admin-title").textContent    = t("uploadTitle");
+  document.getElementById("token-label").textContent    = t("tokenLabel");
   document.getElementById("doc-title-label").textContent = t("docTitleLabel");
   document.getElementById("doc-source-label").textContent = t("docSourceLabel");
   document.getElementById("doc-text-label").textContent = t("docTextLabel");
-  document.getElementById("upload-btn").textContent    = t("uploadButton");
+  document.getElementById("upload-btn").textContent     = t("uploadButton");
 }
 
-// ── Panel navigation ─────────────────────────────────────────────────────────
 function showPanel(name) {
   document.getElementById("ask-panel").style.display   = name === "ask"   ? "" : "none";
   document.getElementById("admin-panel").style.display = name === "admin" ? "" : "none";
+  document.getElementById("nav-ask").classList.toggle("active",   name === "ask");
+  document.getElementById("nav-admin").classList.toggle("active", name === "admin");
 }
 
-// ── Ask ───────────────────────────────────────────────────────────────────────
 async function submitQuestion() {
   const q = document.getElementById("question").value.trim();
   if (!q) return;
@@ -230,14 +393,17 @@ async function submitQuestion() {
   const btn = document.getElementById("submit-btn");
   btn.disabled = true;
   btn.innerHTML = `<span class="spinner"></span>${t("searching")}`;
-
   document.getElementById("answer-section").style.display = "none";
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 90000);
 
   try {
     const res = await fetch("/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question: q }),
+      signal: controller.signal,
     });
     const data = await res.json();
     if (!res.ok) {
@@ -246,8 +412,9 @@ async function submitQuestion() {
     }
     renderAnswer(data);
   } catch (e) {
-    showError(t("errorMsg"));
+    showError(e.name === "AbortError" ? t("timeoutMsg") : t("errorMsg"));
   } finally {
+    clearTimeout(timer);
     btn.disabled = false;
     btn.textContent = t("submitButton");
   }
@@ -255,35 +422,45 @@ async function submitQuestion() {
 
 function showError(msg) {
   const box = document.getElementById("answer-box");
-  box.className = "abstained";
+  box.className = "answer-card error";
   box.textContent = msg;
-  document.getElementById("answer-meta").textContent = "";
+  document.getElementById("answer-meta").innerHTML = "";
+  document.getElementById("subq-section").style.display = "none";
+  document.getElementById("conflicts-section").style.display = "none";
+  document.getElementById("sources-section").style.display = "none";
   document.getElementById("answer-section").style.display = "";
 }
 
 function renderAnswer(data) {
-  // Answer
   const box = document.getElementById("answer-box");
   box.textContent = data.answer;
-  box.className = data.abstained ? "abstained" : "";
+  box.className = "answer-card" + (data.abstained ? " abstained" : "");
 
-  // Meta
   const lang = data.language === "georgian" ? t("langGeorgian") : t("langEnglish");
-  document.getElementById("answer-meta").textContent =
-    `${lang} · ${t("stepsLabel")}: ${data.steps_used}`;
+  const meta = document.getElementById("answer-meta");
+  meta.innerHTML =
+    `<span>${lang}</span>` +
+    `<span>${t("stepsLabel")}: ${data.steps_used}</span>`;
 
   // Sub-queries
-  const tags = document.getElementById("subq-tags");
+  const subqSec  = document.getElementById("subq-section");
+  const tags     = document.getElementById("subq-tags");
   tags.innerHTML = "";
-  (data.sub_queries || []).forEach(sq => {
-    const el = document.createElement("span");
-    el.className = "tag";
-    el.textContent = sq;
-    tags.appendChild(el);
-  });
+  const sqs = data.sub_queries || [];
+  if (sqs.length > 0) {
+    sqs.forEach(sq => {
+      const el = document.createElement("span");
+      el.className = "tag";
+      el.textContent = sq;
+      tags.appendChild(el);
+    });
+    subqSec.style.display = "";
+  } else {
+    subqSec.style.display = "none";
+  }
 
   // Conflicts
-  const confSec = document.getElementById("conflicts-section");
+  const confSec  = document.getElementById("conflicts-section");
   const confList = document.getElementById("conflicts-list");
   confList.innerHTML = "";
   const realConflicts = (data.conflicts || []).filter(c => c.verdict !== "unrelated");
@@ -292,8 +469,11 @@ function renderAnswer(data) {
     realConflicts.forEach(c => {
       const card = document.createElement("div");
       card.className = "conflict-card" + (c.verdict === "agree" ? " agree" : "");
-      const badge = `<span class="verdict-badge verdict-${c.verdict}">${c.verdict === "conflict" ? t("conflictBadge") : t("agreeBadge")}</span>`;
-      card.innerHTML = `${badge} <b>[${c.chunk_a}]</b> vs <b>[${c.chunk_b}]</b><br/><small>${escHtml(c.reason)}</small>`;
+      const label = c.verdict === "conflict" ? t("conflictBadge") : t("agreeBadge");
+      card.innerHTML =
+        `<span class="verdict-pill verdict-${c.verdict}">${label}</span>` +
+        `<b>[${escHtml(c.chunk_a)}]</b> vs <b>[${escHtml(c.chunk_b)}]</b>` +
+        `<div style="margin-top:.35rem;color:#374151">${escHtml(c.reason)}</div>`;
       confList.appendChild(card);
     });
   } else {
@@ -303,15 +483,21 @@ function renderAnswer(data) {
   // Sources
   const srcList = document.getElementById("sources-list");
   srcList.innerHTML = "";
+  document.getElementById("sources-section").style.display = "";
   if (!data.sources || data.sources.length === 0) {
-    srcList.textContent = t("noSources");
+    const el = document.createElement("p");
+    el.className = "empty";
+    el.textContent = t("noSources");
+    srcList.appendChild(el);
   } else {
     data.sources.forEach(s => {
       const card = document.createElement("div");
       card.className = "source-card";
       card.innerHTML =
-        `<span class="score-badge">${t("scoreLabel")}: ${s.rrf_score.toFixed(4)}</span>` +
-        `<div class="source-id">${t("chunkIdLabel")}: ${escHtml(s.chunk_id)}</div>` +
+        `<div class="source-header">` +
+          `<span class="source-id">${t("chunkIdLabel")}: ${escHtml(s.chunk_id)}</span>` +
+          `<span class="score-pill">${t("scoreLabel")}: ${s.rrf_score.toFixed(4)}</span>` +
+        `</div>` +
         `<div class="source-text">${escHtml(s.text.slice(0, 300))}${s.text.length > 300 ? "…" : ""}</div>`;
       srcList.appendChild(card);
     });
@@ -320,7 +506,6 @@ function renderAnswer(data) {
   document.getElementById("answer-section").style.display = "";
 }
 
-// ── Admin upload ──────────────────────────────────────────────────────────────
 async function uploadDocument() {
   const token  = document.getElementById("admin-token").value.trim();
   const title  = document.getElementById("doc-title").value.trim();
@@ -337,10 +522,7 @@ async function uploadDocument() {
   try {
     const res = await fetch("/documents", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Admin-Token": token,
-      },
+      headers: { "Content-Type": "application/json", "X-Admin-Token": token },
       body: JSON.stringify({ title, text, source, format: "text", language: "en",
                              chunking_strategy: "sentence_window" }),
     });
@@ -351,17 +533,16 @@ async function uploadDocument() {
     } else {
       msg.className = "ok";
       msg.textContent = `${t("uploadSuccess")} ID: ${data.doc_id} · chunks: ${data.chunk_count}`;
-      document.getElementById("doc-title").value = "";
-      document.getElementById("doc-text").value  = "";
+      document.getElementById("doc-title").value  = "";
+      document.getElementById("doc-text").value   = "";
       document.getElementById("doc-source").value = "";
     }
-  } catch (e) {
+  } catch {
     msg.className = "err";
     msg.textContent = t("errorMsg");
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function escHtml(s) {
   return String(s)
     .replace(/&/g, "&amp;")
@@ -370,7 +551,6 @@ function escHtml(s) {
     .replace(/"/g, "&quot;");
 }
 
-// Enter key submits
 document.addEventListener("DOMContentLoaded", () => {
   applyI18n();
   showPanel("ask");

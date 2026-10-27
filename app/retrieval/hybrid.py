@@ -40,9 +40,9 @@ def _fetch_chunk_rows(
         return {}
     placeholders = ",".join(["%s"] * len(chunk_ids))
     sql = f"""
-        SELECT chunk_id, text, dup_group
+        SELECT id, text, dup_group
         FROM   chunks
-        WHERE  chunk_id IN ({placeholders})
+        WHERE  id IN ({placeholders})
     """
     with conn.cursor() as cur:
         cur.execute(sql, chunk_ids)

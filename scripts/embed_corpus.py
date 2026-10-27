@@ -39,7 +39,7 @@ def _fetch_unembedded(conn, limit: int) -> list[tuple[str, str]]:
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT chunk_id, text
+            SELECT id, text
             FROM   chunks
             WHERE  embedding IS NULL
             LIMIT  %s
@@ -58,7 +58,7 @@ def _write_embeddings(
         for chunk_id, vec in pairs:
             vec_str = "[" + ",".join(str(x) for x in vec) + "]"
             cur.execute(
-                "UPDATE chunks SET embedding = %s::vector WHERE chunk_id = %s",
+                "UPDATE chunks SET embedding = %s::vector WHERE id = %s",
                 (vec_str, chunk_id),
             )
 

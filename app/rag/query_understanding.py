@@ -18,7 +18,7 @@ from __future__ import annotations
 
 import re
 
-from app.core.errors import LLMMalformedResponseError
+from app.core.errors import LLMMalformedResponseError, LLMTimeoutError, LLMError
 from app.rag.llm.base import LLMClient
 
 _GEORGIAN_RE = re.compile(r"[ა-ჿ]")
@@ -44,17 +44,23 @@ def is_georgian(text: str) -> bool:
 
 
 def translate_to_english(text: str, llm: LLMClient) -> str:
-    """Translate Georgian text to English. Returns unchanged text if not Georgian."""
+    """Translate Georgian text to English. Falls back to original on any LLM failure."""
     if not is_georgian(text):
         return text
-    resp = llm.complete(text, system=_TRANSLATE_SYSTEM, temperature=0.0, max_tokens=512)
-    return resp.text.strip()
+    try:
+        resp = llm.complete(text, system=_TRANSLATE_SYSTEM, temperature=0.0, max_tokens=512)
+        return resp.text.strip()
+    except (LLMTimeoutError, LLMError):
+        return text
 
 
 def rewrite_query(query: str, llm: LLMClient) -> str:
-    """Return a clean English search query from any English input."""
-    resp = llm.complete(query, system=_REWRITE_SYSTEM, temperature=0.0, max_tokens=256)
-    return resp.text.strip()
+    """Return a clean English search query. Falls back to original on any LLM failure."""
+    try:
+        resp = llm.complete(query, system=_REWRITE_SYSTEM, temperature=0.0, max_tokens=256)
+        return resp.text.strip()
+    except (LLMTimeoutError, LLMError):
+        return query
 
 
 def decompose_query(
@@ -75,7 +81,7 @@ def decompose_query(
         if not isinstance(subs, list) or not subs:
             return [query]
         return [str(s).strip() for s in subs[:max_sub_queries] if str(s).strip()]
-    except LLMMalformedResponseError:
+    except (LLMMalformedResponseError, LLMTimeoutError, LLMError):
         return [query]
 
 

@@ -38,7 +38,7 @@ def search_dense(
         similarity = 1 − cosine_distance ∈ [−1, 1]; 1 = identical.
     """
     sql = """
-        SELECT chunk_id,
+        SELECT id,
                1 - (embedding <=> %s::vector) AS similarity
         FROM   chunks
         ORDER  BY embedding <=> %s::vector

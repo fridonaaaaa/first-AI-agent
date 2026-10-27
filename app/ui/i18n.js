@@ -15,6 +15,7 @@ const I18N = {
   agreeBadge:      "თანხვდენა",
   abstainedNote:   "სისტემამ ვერ იპოვა საკმარისი მტკიცებულება.",
   errorMsg:        "შეცდომა მოხდა. სცადეთ მოგვიანებით.",
+  timeoutMsg:      "მოთხოვნა ძალიან დიდხანს გაგრძელდა. სცადეთ მოგვიანებით.",
   stepsLabel:      "ნაბიჯები",
   scoreLabel:      "სქორი",
   chunkIdLabel:    "ID",
