@@ -38,7 +38,11 @@ def _get_model() -> "SentenceTransformer":
                 "Run: pip install sentence-transformers"
             ) from exc
         settings = get_settings()
-        _model = SentenceTransformer(settings.embedding_model)
+        # float16 halves RAM usage (~235 MB vs ~470 MB) with negligible quality loss.
+        _model = SentenceTransformer(
+            settings.embedding_model,
+            model_kwargs={"torch_dtype": "float16"},
+        )
     return _model
 
 
