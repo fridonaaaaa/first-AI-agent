@@ -125,3 +125,19 @@ Log of what Claude Code generated each session. Owner fills in "Changed by owner
 - `scripts/embed_corpus.py` — bulk embedding script (created as Phase 2 gap was identified in Phase 6 audit)
 
 **Changed by owner:**
+
+## Session 2026-10-27 — Pipeline fixes + UI redesign
+
+### What AI generated
+- `gemini.py`: corrected model to `gemini-3.1-flash-lite` (tested via models list API)
+- `bm25.py`: added `_fetch_all_terms()` method; updated `search_index()` to use 2 batched
+  queries for DB path instead of 2N separate round-trips per term
+- `vector_store.py`, `hybrid.py`, `embed_corpus.py`: fixed `chunk_id` → `id` column name
+- `db.py`: `_connect()` retry loop (4 attempts, 1.5s delay) for DNS failures
+- `query_understanding.py`: try/except fallbacks on all 3 LLM calls
+- `registry.py`, `load_hotpotqa.py`: batch inserts via execute_values()
+- `index.html`: full UI redesign (indigo header, cards, score pills, error states)
+- `i18n.js`: added timeoutMsg string
+- `.env`: ABSTENTION_THRESHOLD=0.005 (calibrated to actual RRF score range)
+
+Changed by owner:
