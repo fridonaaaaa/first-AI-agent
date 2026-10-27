@@ -26,6 +26,7 @@ log = get_logger("ask")
 
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=2000)
+    doc_id: str | None = Field(None, description="Restrict search to this document's chunks.")
 
 
 class SourceInfo(BaseModel):
@@ -60,7 +61,7 @@ async def ask(request: Request, body: AskRequest) -> AskResponse:
     llm = get_llm_client()
 
     try:
-        result = run_pipeline(body.question, llm)
+        result = run_pipeline(body.question, llm, doc_id=body.doc_id)
     except InvestigationEngineError as exc:
         log.error("pipeline_error", question=body.question[:80], error=str(exc))
         return AskResponse(
@@ -83,12 +84,14 @@ async def ask(request: Request, body: AskRequest) -> AskResponse:
         abstained=result.abstention.should_abstain if result.abstention else False,
     )
 
+    cited_ids: set[str] = set(result.citation_check.valid_ids) if result.citation_check else set()
     return AskResponse(
         answer=result.answer,
         language=result.language,
         sources=[
             SourceInfo(chunk_id=c.chunk_id, text=c.text, rrf_score=c.rrf_score)
             for c in result.chunks
+            if c.chunk_id in cited_ids
         ],
         conflicts=[
             ConflictInfo(

@@ -15,6 +15,12 @@ from app.core.settings import get_settings
 async def lifespan(app: FastAPI):
     settings = get_settings()
     configure_logging(settings.log_level, settings.environment)
+    # Pre-load the embedding model so the first upload/query is not delayed.
+    try:
+        from app.retrieval.embeddings import encode
+        encode(["warmup"])
+    except Exception:
+        pass  # non-fatal — model will load lazily on first real request
     yield
 
 

@@ -75,23 +75,32 @@ def _check_pair(a: CandidateChunk, b: CandidateChunk, llm: LLMClient) -> Conflic
     )
 
 
+_MAX_PAIRS = 6  # hard cap on LLM calls; prevents O(n²) blowup on large result sets
+_TOP_N = 6      # only consider the top-N ranked chunks when building candidate pairs
+
+
 def detect_conflicts(
     chunks: list[CandidateChunk],
     llm: LLMClient,
 ) -> list[ConflictVerdict]:
     """
-    Check all candidate pairs for contradictions.
+    Check candidate pairs for contradictions, bounded by _MAX_PAIRS LLM calls.
 
-    Only pairs that pass _is_conflict_candidate() are sent to the LLM,
-    keeping the number of LLM calls bounded (O(n²) worst case but in
-    practice ≤ 3–4 calls for typical retrieved sets of 10 chunks).
+    Only the top _TOP_N chunks are considered (highest RRF score first) and
+    only pairs that pass _is_conflict_candidate() are sent to the LLM.
+    This keeps worst-case cost at _MAX_PAIRS calls regardless of top_k.
 
     Returns a list of ConflictVerdict — only "conflict" verdicts matter
     to callers, but all verdicts are returned for logging/eval.
     """
+    candidates = chunks[:_TOP_N]
     verdicts: list[ConflictVerdict] = []
-    for i in range(len(chunks)):
-        for j in range(i + 1, len(chunks)):
-            if _is_conflict_candidate(chunks[i], chunks[j]):
-                verdicts.append(_check_pair(chunks[i], chunks[j], llm))
+    for i in range(len(candidates)):
+        if len(verdicts) >= _MAX_PAIRS:
+            break
+        for j in range(i + 1, len(candidates)):
+            if len(verdicts) >= _MAX_PAIRS:
+                break
+            if _is_conflict_candidate(candidates[i], candidates[j]):
+                verdicts.append(_check_pair(candidates[i], candidates[j], llm))
     return verdicts

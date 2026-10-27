@@ -139,7 +139,12 @@ def add_document(
     chash = parsed.content_hash
     cur = conn.cursor()
 
-    cur.execute("SELECT id FROM documents WHERE content_hash = %s", (chash,))
+    # Duplicate = same content AND same title. Same content with a different
+    # title is treated as a distinct source (e.g. two files with the same text).
+    cur.execute(
+        "SELECT id FROM documents WHERE content_hash = %s AND title = %s",
+        (chash, parsed.title),
+    )
     if cur.fetchone():
         return None  # exact duplicate — skip
 

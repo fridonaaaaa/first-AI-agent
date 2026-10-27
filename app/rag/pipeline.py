@@ -35,8 +35,18 @@ from app.retrieval.hybrid import hybrid_search
 from app.retrieval.rerank import CandidateChunk
 
 _ANSWER_SYSTEM = """You are a research assistant. Answer the question using ONLY the
-provided passages. For every factual claim cite the passage ID like [chunk-id].
-If the passages contradict each other, say so and show both sides.
+provided passages. Cite each claim with the passage ID like [chunk-id].
+
+Rules for conflicting passages:
+- Count how many passages support each position.
+- Majority: "Most sources say [A] (N sources). However, M source(s) say [B]. There is conflicting information."
+- Equal split — use EXACTLY this format, no "according to":
+  "Sources disagree:
+  • [state position A as a plain sentence]
+  • [state position B as a plain sentence]
+  I cannot determine which is correct — please decide which source you trust."
+- NEVER pick a winner silently. NEVER write "according to" inside the bullet points.
+
 Answer in {language}. Do NOT add information not found in the passages."""
 
 
@@ -77,6 +87,7 @@ def run_pipeline(
     conn: "psycopg2.extensions.connection | None" = None,
     top_k: int | None = None,
     max_tool_steps: int | None = None,
+    doc_id: str | None = None,
 ) -> PipelineResult:
     """
     Run the full RAG pipeline for one user question.
@@ -94,39 +105,66 @@ def run_pipeline(
     settings = get_settings()
     k = top_k or settings.retrieval_top_k
     max_steps = max_tool_steps or settings.max_tool_steps
+    is_georgian = any(ord(c) > 0x10CF for c in raw_query)
 
-    # 1. Query understanding
+    def _abstain_result(reason: str) -> PipelineResult:
+        msg = (
+            "ვერ ვიპოვე საკმარისი მტკიცებულება ამ კითხვაზე პასუხის გასაცემად."
+            if is_georgian
+            else "I could not find any information about this in my knowledge base."
+        )
+        return PipelineResult(
+            answer=msg,
+            language="georgian" if is_georgian else "english",
+            rewritten_query=raw_query,
+            sub_queries=[],
+            chunks=[],
+            conflicts=[],
+            abstention=AbstentionDecision(should_abstain=True, reason=reason, top_score=0.0),
+            citation_check=None,
+            steps_used=0,
+        )
+
+    # 1. Initial search with the raw query — used for both early-exit and as
+    #    the seed result set.  Only one DB round-trip before the LLM is called.
+    initial_chunks = hybrid_search(
+        raw_query, sub_queries=[raw_query], top_k=k, conn=conn, doc_id=doc_id
+    )
+
+    # Early exit: nothing found at all, or best score is below the threshold.
+    # Skips all LLM calls so the response is fast (~3-4 s instead of ~13 s).
+    if not initial_chunks:
+        return _abstain_result("no_results")
+
+    top_score = initial_chunks[0].rrf_score
+    if top_score < settings.abstention_threshold:
+        return _abstain_result("low_score")
+
+    # 2. Query understanding — only reached when the search looks promising.
     lang, rewritten, sub_queries = understand_query(
         raw_query, llm, max_sub_queries=settings.max_sub_queries
     )
 
-    # 2. Tool loop: retrieve chunks (each sub-query counted as one step)
-    steps = 0
-    all_chunks: list[CandidateChunk] = []
-    seen_ids: set[str] = set()
+    # 3. Refined search with the rewritten query + sub-queries (if different).
+    steps = 1  # initial_chunks counts as step 1
+    all_chunks: list[CandidateChunk] = list(initial_chunks)
+    seen_ids: set[str] = {c.chunk_id for c in initial_chunks}
 
     def _do_search(query: str, subs: list[str]) -> None:
         nonlocal steps
         if steps >= max_steps:
             return
         steps += 1
-        # Pass conn only when the caller provided one (e.g. integration tests /
-        # bulk jobs). Otherwise let hybrid_search open its own connection so
-        # the pipeline itself never holds an open connection between steps.
         new_chunks = hybrid_search(
-            query, sub_queries=subs, top_k=k, conn=conn
+            query, sub_queries=subs, top_k=k, conn=conn, doc_id=doc_id
         )
-
         for chunk in new_chunks:
             if chunk.chunk_id not in seen_ids:
                 seen_ids.add(chunk.chunk_id)
                 all_chunks.append(chunk)
 
-    _do_search(rewritten, sub_queries)
-
-    # If sub-queries produced nothing useful, retry with the raw query
-    if not all_chunks and raw_query != rewritten:
-        _do_search(raw_query, [raw_query])
+    if rewritten != raw_query or sub_queries != [raw_query]:
+        _do_search(rewritten, sub_queries)
 
     # 3. Abstention check
     abstention = check_abstention(rewritten, all_chunks, llm, settings.abstention_threshold)

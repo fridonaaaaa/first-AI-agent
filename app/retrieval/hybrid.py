@@ -56,6 +56,7 @@ def hybrid_search(
     top_k: int = 10,
     lambda_: float = 0.5,
     conn: "psycopg2.extensions.connection | None" = None,
+    doc_id: str | None = None,
 ) -> list[CandidateChunk]:
     """
     Full hybrid retrieval for one query.
@@ -66,6 +67,7 @@ def hybrid_search(
         top_k:       Number of chunks to return.
         lambda_:     Relevance vs coverage trade-off (passed to coverage_rerank).
         conn:        Optional existing DB connection.
+        doc_id:      When set, restrict search to chunks from this document only.
 
     Returns:
         Up to top_k CandidateChunk objects, ordered by the reranker.
@@ -75,11 +77,11 @@ def hybrid_search(
     def _run(c: "psycopg2.extensions.connection") -> list[CandidateChunk]:
         # 1. Dense search
         query_vec = encode_one(query)
-        dense_results = search_dense(query_vec, top_k=_CANDIDATE_POOL, conn=c)
+        dense_results = search_dense(query_vec, top_k=_CANDIDATE_POOL, conn=c, doc_id=doc_id)
 
         # 2. BM25 search
         bm25 = BM25Searcher(conn=c, k1=settings.bm25_k1, b=settings.bm25_b)
-        bm25_results = bm25.search(query, top_k=_CANDIDATE_POOL)
+        bm25_results = bm25.search(query, top_k=_CANDIDATE_POOL, doc_id=doc_id)
 
         # 3. Fuse
         fused = reciprocal_rank_fusion(

@@ -26,6 +26,8 @@ import pathlib
 ROOT = pathlib.Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
+import psycopg2.extras
+
 from app.core.db import open_connection
 from app.core.logging import configure_logging, get_logger
 from app.core.settings import get_settings
@@ -53,14 +55,22 @@ def _write_embeddings(
     conn,
     pairs: list[tuple[str, list[float]]],
 ) -> None:
-    """Write (chunk_id, vector) pairs back to the DB."""
+    """Write (chunk_id, vector) pairs back to the DB in one round-trip using a temp table."""
     with conn.cursor() as cur:
-        for chunk_id, vec in pairs:
-            vec_str = "[" + ",".join(str(x) for x in vec) + "]"
-            cur.execute(
-                "UPDATE chunks SET embedding = %s::vector WHERE id = %s",
-                (vec_str, chunk_id),
-            )
+        cur.execute(
+            "CREATE TEMP TABLE _emb_batch (id uuid, vec text) ON COMMIT DROP"
+        )
+        psycopg2.extras.execute_values(
+            cur,
+            "INSERT INTO _emb_batch (id, vec) VALUES %s",
+            [
+                (chunk_id, "[" + ",".join(str(x) for x in vec) + "]")
+                for chunk_id, vec in pairs
+            ],
+        )
+        cur.execute(
+            "UPDATE chunks SET embedding = b.vec::vector FROM _emb_batch b WHERE chunks.id = b.id"
+        )
 
 
 def _record_model(conn, model_name: str, dim: int) -> None:
