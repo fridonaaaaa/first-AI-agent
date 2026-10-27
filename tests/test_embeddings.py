@@ -3,7 +3,7 @@ Unit tests for the embedding interface.
 
 We do NOT call the real model here — unit tests must not download weights.
 Instead we patch app.retrieval.embeddings._get_model so the library import
-is never reached. This works whether or not sentence-transformers is installed.
+is never reached. This works whether or not fastembed is installed.
 """
 
 from unittest.mock import MagicMock, patch
@@ -13,9 +13,9 @@ import pytest
 
 
 def _fake_model(dim: int = 4) -> MagicMock:
-    """Return a mock that behaves like SentenceTransformer.encode."""
+    """Return a mock that behaves like fastembed TextEmbedding.embed."""
     model = MagicMock()
-    model.encode.side_effect = lambda texts, **kw: np.ones((len(texts), dim))
+    model.embed.side_effect = lambda texts, **kw: (np.ones(dim) for _ in texts)
     return model
 
 
@@ -59,7 +59,7 @@ def test_encode_raises_embedding_error_on_failure():
     from app.core.errors import EmbeddingError
 
     bad_model = MagicMock()
-    bad_model.encode.side_effect = RuntimeError("model exploded")
+    bad_model.embed.side_effect = RuntimeError("model exploded")
 
     mod = _reset()
     with patch.object(mod, "_get_model", return_value=bad_model):
@@ -68,7 +68,7 @@ def test_encode_raises_embedding_error_on_failure():
 
 
 def test_model_loaded_once():
-    """Lazy singleton: SentenceTransformer constructor is called once, not twice."""
+    """Lazy singleton: TextEmbedding constructor is called once, not twice."""
     import sys
 
     mod = _reset()
@@ -80,11 +80,10 @@ def test_model_loaded_once():
         call_count["n"] += 1
         return _fake_model()
 
-    fake_module.SentenceTransformer = counting_constructor
-    old = sys.modules.get("sentence_transformers")
-    sys.modules["sentence_transformers"] = fake_module
+    fake_module.TextEmbedding = counting_constructor
+    old = sys.modules.get("fastembed")
+    sys.modules["fastembed"] = fake_module
 
-    # Also patch get_settings so the test is independent of the .env file.
     fake_settings = MagicMock()
     fake_settings.embedding_model = "fake-model"
 
@@ -95,8 +94,8 @@ def test_model_loaded_once():
             mod.encode_one("second")
     finally:
         if old is None:
-            sys.modules.pop("sentence_transformers", None)
+            sys.modules.pop("fastembed", None)
         else:
-            sys.modules["sentence_transformers"] = old
+            sys.modules["fastembed"] = old
 
     assert call_count["n"] == 1

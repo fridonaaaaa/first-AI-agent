@@ -1,17 +1,16 @@
 """
 Embedding interface — single entry point for turning text into vectors.
 
-Wraps sentence-transformers so the rest of the codebase never imports it
-directly. The model name and dimension are set by Settings and must match
-what was recorded in bm25_corpus.embedding_model at index time.
+Uses fastembed (ONNX runtime) instead of sentence-transformers (PyTorch).
+fastembed uses ~100 MB RAM vs ~470 MB for PyTorch, making it viable on
+Render's 512 MB free tier. The ONNX model produces vectors compatible
+with those computed by sentence-transformers for the same model.
 
 Design choices:
-- Lazy load: the transformer is heavy (~90 MB). It is loaded once on first
-  call and reused. Startup stays fast; first query pays the load cost.
+- Lazy load: the model is heavy. Loaded once on first call and reused.
 - Batch encode: encode() accepts a list so callers can batch for efficiency.
-  Single-string callers wrap it in a list themselves (or use encode_one).
-- Pure-Python interface: the returned type is list[float] (not numpy) so
-  psycopg2 / pgvector can accept it without extra conversion at the call site.
+- Pure-Python interface: returns list[float] so psycopg2/pgvector can accept
+  it without extra conversion at the call site.
 """
 
 from __future__ import annotations
@@ -22,27 +21,22 @@ from app.core.errors import EmbeddingError
 from app.core.settings import get_settings
 
 if TYPE_CHECKING:
-    from sentence_transformers import SentenceTransformer
+    from fastembed import TextEmbedding
 
-_model: "SentenceTransformer | None" = None
+_model: "TextEmbedding | None" = None
 
 
-def _get_model() -> "SentenceTransformer":
+def _get_model() -> "TextEmbedding":
     global _model
     if _model is None:
         try:
-            from sentence_transformers import SentenceTransformer  # type: ignore[import]
+            from fastembed import TextEmbedding  # type: ignore[import]
         except ImportError as exc:
             raise EmbeddingError(
-                "sentence-transformers is not installed. "
-                "Run: pip install sentence-transformers"
+                "fastembed is not installed. Run: pip install fastembed"
             ) from exc
         settings = get_settings()
-        # float16 halves RAM usage (~235 MB vs ~470 MB) with negligible quality loss.
-        _model = SentenceTransformer(
-            settings.embedding_model,
-            model_kwargs={"torch_dtype": "float16"},
-        )
+        _model = TextEmbedding(model_name=settings.embedding_model)
     return _model
 
 
@@ -57,8 +51,7 @@ def encode(texts: list[str]) -> list[list[float]]:
         return []
     try:
         model = _get_model()
-        vectors = model.encode(texts, convert_to_numpy=True)
-        return [v.tolist() for v in vectors]
+        return [v.tolist() for v in model.embed(texts)]
     except EmbeddingError:
         raise
     except Exception as exc:
