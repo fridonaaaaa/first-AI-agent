@@ -46,9 +46,5 @@ services:
         value: INFO
       - key: ENVIRONMENT
         value: production
-      - key: SENTENCE_TRANSFORMERS_HOME
-        value: /home/appuser/.cache/st
-      - key: TOKENIZERS_PARALLELISM
-        value: "false"
-      - key: OMP_NUM_THREADS
-        value: "1"
+      - key: EMBEDDING_BACKEND
+        value: hf_api
