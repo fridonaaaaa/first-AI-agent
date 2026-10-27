@@ -186,12 +186,13 @@ def test_no_abstain_when_sufficient():
     assert decision.should_abstain is False
 
 
-def test_abstain_when_llm_says_insufficient():
+def test_abstain_when_score_below_threshold():
+    # Gate 2 (LLM sufficiency check) was removed — Gate 1 (score) is the only gate.
     llm = MockLLMClient(fallback='{"sufficient": false}')
-    chunks = [_chunk("a", score=0.5, text="Some unrelated text.")]
-    decision = check_abstention("specific question", chunks, llm, rrf_threshold=0.01)
+    chunks = [_chunk("a", score=0.002, text="Some unrelated text.")]
+    decision = check_abstention("specific question", chunks, llm, rrf_threshold=0.005)
     assert decision.should_abstain is True
-    assert decision.reason == "llm_insufficient"
+    assert decision.reason == "low_score"
 
 
 # ---------------------------------------------------------------------------

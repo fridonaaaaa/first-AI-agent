@@ -62,30 +62,9 @@ def check_abstention(
             top_score=top_score,
         )
 
-    # Gate 2: LLM sufficiency check
-    context = "\n\n".join(
-        f"[{c.chunk_id}] {c.text}" for c in chunks[:5]
-    )
-    prompt = (
-        f"Question: {query}\n\n"
-        f"Retrieved passages:\n{context}\n\n"
-        "Do these passages contain enough information to answer the question?"
-    )
-    try:
-        data = llm.complete_json(
-            prompt, system=_SUFFICIENCY_SYSTEM, temperature=0.0, max_tokens=64
-        )
-        sufficient = bool(data.get("sufficient", True))
-    except Exception:
-        sufficient = True  # on parse failure, proceed rather than false-abstain
-
-    if not sufficient:
-        return AbstentionDecision(
-            should_abstain=True,
-            reason="llm_insufficient",
-            top_score=top_score,
-        )
-
+    # Gate 2 removed: the score threshold is sufficient for our corpus size.
+    # The answer-generation LLM will naturally qualify its answer when evidence
+    # is partial — a second LLM call here was rejecting valid hits.
     return AbstentionDecision(
         should_abstain=False,
         reason="sufficient",
