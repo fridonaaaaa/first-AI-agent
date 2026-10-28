@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     daily_cap_ask: int = Field(1000, ge=1)
 
     # Caching
-    llm_cache_dir: str = Field(".cache/llm")
+    llm_cache_dir: str = Field("/tmp/llm_cache")
 
     # Misc
     log_level: str = Field("INFO")
