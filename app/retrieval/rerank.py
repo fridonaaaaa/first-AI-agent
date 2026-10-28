@@ -38,6 +38,7 @@ class CandidateChunk:
     dup_group: str | None = field(default=None)
     doc_id: str | None = field(default=None)
     title: str | None = field(default=None)
+    cosine_sim: float = field(default=0.0)
 
 
 def _tokenise(text: str) -> set[str]:

@@ -132,13 +132,14 @@ def run_pipeline(
         raw_query, sub_queries=[raw_query], top_k=k, conn=conn, doc_id=doc_id, session_id=session_id
     )
 
-    # Early exit: nothing found at all, or best score is below the threshold.
-    # Skips all LLM calls so the response is fast (~3-4 s instead of ~13 s).
+    # Early exit: nothing found at all, or the best cosine similarity is below
+    # the threshold.  Cosine similarity is a real relevance signal; RRF scores
+    # are bounded below by ~0.014 and cannot distinguish "irrelevant" results.
     if not initial_chunks:
         return _abstain_result("no_results")
 
-    top_score = initial_chunks[0].rrf_score
-    if top_score < settings.abstention_threshold:
+    top_cosine = max((c.cosine_sim for c in initial_chunks), default=0.0)
+    if top_cosine < settings.abstention_threshold:
         return _abstain_result("low_score")
 
     # 2. Query understanding — only reached when the search looks promising.

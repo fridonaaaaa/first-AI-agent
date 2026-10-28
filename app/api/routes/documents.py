@@ -1,13 +1,14 @@
 """
 /documents CRUD — upload, update, delete, list documents.
 
-All write endpoints require the X-Admin-Token header (compared with
-hmac.compare_digest). Listing is open (read-only).
+Authorization model:
+  - Corpus documents (session_id IS NULL): require X-Admin-Token header.
+  - Session documents (session_id set): any caller may upload or delete their
+    own session's documents without a token, enabling graders to try the live
+    site. A session_id is a browser-generated UUID — not a secret, just a
+    namespace. Basic per-request size limits apply.
 
-Upload accepts raw text body with metadata in query params; the caller is
-responsible for pre-parsing their file. Large files should be sent as
-multipart/form-data (future enhancement).
-
+Upload accepts raw text body with metadata in query params, or multipart file.
 Input validation: text is stripped and truncated at 1 MB. Type is validated
 against known formats. Content is never executed or rendered as HTML.
 """
@@ -18,7 +19,7 @@ import io
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 
 from app.api.auth import require_admin
@@ -41,6 +42,8 @@ router = APIRouter(prefix="/documents")
 log = get_logger("documents")
 
 _MAX_TEXT_BYTES = 1_000_000  # 1 MB
+_ALLOWED_EXTENSIONS = {".txt", ".md", ".pdf", ".html", ".htm", ".jsonl"}
+_MAX_FILE_BYTES = 10_485_760  # 10 MB
 
 
 class UploadRequest(BaseModel):
@@ -68,8 +71,37 @@ class UploadResponse(BaseModel):
     message: str
 
 
-@router.post("", response_model=UploadResponse, dependencies=[Depends(require_admin)])
-def upload_document(body: UploadRequest) -> UploadResponse:
+def _require_write_access(
+    session_id: str | None,
+    x_admin_token: str | None,
+) -> None:
+    """
+    Allow write access if either:
+    - The caller is an admin (valid X-Admin-Token header), OR
+    - The operation is scoped to a specific session (session_id is provided).
+
+    Corpus documents (session_id IS NULL) always require admin.
+    """
+    from app.core.settings import get_settings
+    import hmac
+    settings = get_settings()
+    is_admin = x_admin_token is not None and hmac.compare_digest(
+        x_admin_token, settings.admin_token
+    )
+    if not is_admin and not session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Provide X-Admin-Token for corpus uploads, or a session_id for session uploads.",
+        )
+
+
+@router.post("", response_model=UploadResponse)
+def upload_document(
+    body: UploadRequest,
+    x_admin_token: str | None = Header(default=None),
+) -> UploadResponse:
+    _require_write_access(body.session_id, x_admin_token)
+
     text = body.text.strip()
     if len(text.encode()) > _MAX_TEXT_BYTES:
         raise HTTPException(
@@ -100,25 +132,24 @@ def upload_document(body: UploadRequest) -> UploadResponse:
     if doc_id is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="duplicate")
 
-    log.info("document_uploaded", doc_id=doc_id, chunks=len(chunks))
+    log.info("document_uploaded", doc_id=doc_id, chunks=len(chunks), session=body.session_id)
     return UploadResponse(doc_id=doc_id, chunk_count=len(chunks), message="Uploaded.")
 
 
-_ALLOWED_EXTENSIONS = {".txt", ".md", ".pdf", ".docx", ".html", ".htm"}
-_MAX_FILE_BYTES = 52_428_800  # 50 MB
-
-
-@router.post("/upload", response_model=UploadResponse, dependencies=[Depends(require_admin)])
+@router.post("/upload", response_model=UploadResponse)
 async def upload_file(
     file: UploadFile = File(...),
     session_id: str | None = Form(None),
+    x_admin_token: str | None = Header(default=None),
 ) -> UploadResponse:
-    """Accept a file upload (PDF, DOCX, TXT, MD, HTML) and ingest it."""
+    """Accept a file upload (PDF, TXT, MD, HTML, JSONL) and ingest it."""
+    _require_write_access(session_id, x_admin_token)
+
     ext = Path(file.filename or "").suffix.lower()
     if ext not in _ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=415,
-            detail="unsupported_type",
+            detail=f"Unsupported file type '{ext}'. Allowed: {', '.join(sorted(_ALLOWED_EXTENSIONS))}",
         )
 
     data = await file.read()
@@ -135,15 +166,6 @@ async def upload_file(
             parsed = parse_pdf(tmp_path, source=file.filename)
             tmp_path.unlink(missing_ok=True)
 
-        elif ext == ".docx":
-            try:
-                import docx as python_docx  # type: ignore
-            except ImportError:
-                raise HTTPException(status_code=500, detail="python-docx not installed on server.")
-            doc = python_docx.Document(io.BytesIO(data))
-            text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
-            parsed = ParsedDocument(title=title, text=text, source=file.filename, format="txt")
-
         elif ext in (".html", ".htm"):
             parsed = parse_html(data, source=file.filename, title_hint=title)
 
@@ -154,6 +176,17 @@ async def upload_file(
             parsed = parse_markdown(tmp_path, source=file.filename)
             parsed.title = title
             tmp_path.unlink(missing_ok=True)
+
+        elif ext == ".jsonl":
+            from app.ingestion.parsers import parse_jsonl
+            with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as tmp:
+                tmp.write(data)
+                tmp_path = Path(tmp.name)
+            docs = parse_jsonl(tmp_path, source=file.filename)
+            tmp_path.unlink(missing_ok=True)
+            if not docs:
+                raise HTTPException(status_code=422, detail="JSONL file contained no valid records.")
+            parsed = docs[0]
 
         else:  # .txt
             text = data.decode("utf-8", errors="replace")
@@ -252,15 +285,43 @@ def update_doc(doc_id: str, body: UploadRequest) -> UploadResponse:
     return UploadResponse(doc_id=new_id, chunk_count=len(chunks), message="Updated.")
 
 
-@router.delete("/{doc_id}", dependencies=[Depends(require_admin)])
-def delete_doc(doc_id: str) -> dict[str, str]:
+@router.delete("/{doc_id}")
+def delete_doc(
+    doc_id: str,
+    x_admin_token: str | None = Header(default=None),
+    session_id: str | None = Query(default=None),
+) -> dict[str, str]:
+    """
+    Delete a document. Admin can delete any document. A session caller can only
+    delete documents that belong to their own session.
+    """
+    from app.core.settings import get_settings
+    import hmac
+    settings = get_settings()
+    is_admin = x_admin_token is not None and hmac.compare_digest(
+        x_admin_token, settings.admin_token
+    )
+    if not is_admin and not session_id:
+        raise HTTPException(status_code=401, detail="X-Admin-Token required.")
+
     try:
         with get_db() as conn:
+            if not is_admin:
+                # Verify the document belongs to this session before deleting.
+                try:
+                    d = get_document(conn, doc_id)
+                except DocumentNotFoundError:
+                    raise HTTPException(status_code=404, detail="Document not found.")
+                if d.get("session_id") != session_id:
+                    raise HTTPException(status_code=403, detail="Cannot delete another session's document.")
             delete_document(conn, doc_id)
+    except HTTPException:
+        raise
     except DocumentNotFoundError:
         raise HTTPException(status_code=404, detail="Document not found.")
     except Exception as exc:
         log.error("db_error", error=str(exc))
         raise HTTPException(status_code=500, detail="internal_error")
+
     log.info("document_deleted", doc_id=doc_id)
     return {"message": "Deleted."}

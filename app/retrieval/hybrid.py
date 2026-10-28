@@ -103,6 +103,7 @@ def hybrid_search(
 
         # Build CandidateChunk list in fused order, preserving RRF scores
         rrf_score_map = {cid: score for cid, score in fused}
+        cosine_map = {cid: sim for cid, sim in dense_results}
         candidates: list[CandidateChunk] = []
         for cid in fused_ids:
             if cid not in rows:
@@ -115,6 +116,7 @@ def hybrid_search(
                     dup_group=rows[cid]["dup_group"],
                     doc_id=rows[cid]["doc_id"],
                     title=rows[cid]["title"],
+                    cosine_sim=cosine_map.get(cid, 0.0),
                 )
             )
 

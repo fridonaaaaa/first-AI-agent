@@ -45,7 +45,10 @@ class Settings(BaseSettings):
     # RAG pipeline
     max_tool_steps: int = Field(8, ge=1, le=20)
     max_sub_queries: int = Field(4, ge=1, le=8)
-    abstention_threshold: float = Field(0.3, ge=0.0, le=1.0)
+    # Minimum cosine similarity for the top retrieved chunk to pass the pre-LLM
+    # abstention gate.  RRF scores are bounded below by 1/(k+top_k) ≈ 0.014 and
+    # cannot signal "irrelevant", so we use raw cosine similarity instead.
+    abstention_threshold: float = Field(0.25, ge=0.0, le=1.0)
 
     # Rate limiting
     rate_limit_per_ip_per_minute: int = Field(20, ge=1)

@@ -17,6 +17,7 @@ import psycopg2
 
 from app.core.db import get_db
 from app.core.errors import DatabaseError, EmbeddingError
+from app.core.settings import get_settings
 from app.retrieval.embeddings import encode
 
 
@@ -43,6 +44,14 @@ def search_dense(
         List of (chunk_id, similarity) sorted by similarity descending.
         similarity = 1 − cosine_distance ∈ [−1, 1]; 1 = identical.
     """
+    expected_dim = get_settings().embedding_dim
+    if len(query_vector) != expected_dim:
+        raise EmbeddingError(
+            f"Query vector has {len(query_vector)} dimensions but the DB stores "
+            f"{expected_dim}-dimensional embeddings. Embedding models do not match — "
+            "dense search aborted to prevent corrupt results."
+        )
+
     vec_str = "[" + ",".join(str(x) for x in query_vector) + "]"
 
     if doc_id is not None:

@@ -27,8 +27,8 @@ from app.retrieval.rerank import CandidateChunk
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _chunk(cid, score=0.5, text="some text", dup=None):
-    return CandidateChunk(chunk_id=cid, rrf_score=score, text=text, dup_group=dup)
+def _chunk(cid, score=0.5, text="some text", dup=None, cosine_sim=0.5):
+    return CandidateChunk(chunk_id=cid, rrf_score=score, text=text, dup_group=dup, cosine_sim=cosine_sim)
 
 
 # ---------------------------------------------------------------------------
@@ -172,25 +172,26 @@ def test_abstain_on_empty_chunks():
     assert decision.reason == "low_score"
 
 
-def test_abstain_on_low_score():
+def test_abstain_on_low_cosine():
+    # cosine_sim=0.1 is below the default threshold of 0.25 → should abstain.
     llm = MockLLMClient()
-    chunks = [_chunk("a", score=0.001)]
-    decision = check_abstention("query", chunks, llm, rrf_threshold=0.01)
+    chunks = [_chunk("a", score=0.5, cosine_sim=0.1)]
+    decision = check_abstention("query", chunks, llm, cosine_threshold=0.25)
     assert decision.should_abstain is True
+    assert decision.reason == "low_score"
 
 
 def test_no_abstain_when_sufficient():
-    llm = MockLLMClient(fallback='{"sufficient": true}')
-    chunks = [_chunk("a", score=0.5, text="Bell invented the telephone in 1876.")]
-    decision = check_abstention("who invented telephone", chunks, llm, rrf_threshold=0.01)
+    llm = MockLLMClient()
+    chunks = [_chunk("a", score=0.5, text="Bell invented the telephone in 1876.", cosine_sim=0.8)]
+    decision = check_abstention("who invented telephone", chunks, llm, cosine_threshold=0.25)
     assert decision.should_abstain is False
 
 
-def test_abstain_when_score_below_threshold():
-    # Gate 2 (LLM sufficiency check) was removed — Gate 1 (score) is the only gate.
-    llm = MockLLMClient(fallback='{"sufficient": false}')
-    chunks = [_chunk("a", score=0.002, text="Some unrelated text.")]
-    decision = check_abstention("specific question", chunks, llm, rrf_threshold=0.005)
+def test_abstain_when_cosine_below_threshold():
+    llm = MockLLMClient()
+    chunks = [_chunk("a", score=0.9, text="Some unrelated text.", cosine_sim=0.05)]
+    decision = check_abstention("specific question", chunks, llm, cosine_threshold=0.1)
     assert decision.should_abstain is True
     assert decision.reason == "low_score"
 
@@ -200,8 +201,8 @@ def test_abstain_when_score_below_threshold():
 # ---------------------------------------------------------------------------
 
 _FAKE_CHUNKS = [
-    _chunk("c1", score=0.9, text="Bell invented the telephone in 1876."),
-    _chunk("c2", score=0.5, text="Bell was born in Edinburgh in 1847."),
+    _chunk("c1", score=0.9, text="Bell invented the telephone in 1876.", cosine_sim=0.85),
+    _chunk("c2", score=0.5, text="Bell was born in Edinburgh in 1847.", cosine_sim=0.60),
 ]
 
 

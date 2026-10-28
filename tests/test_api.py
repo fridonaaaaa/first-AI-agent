@@ -120,7 +120,7 @@ def test_upload_document_missing_token():
         json={"title": "T", "text": "content", "format": "text",
               "source": "", "language": "en", "chunking_strategy": "sentence_window"},
     )
-    assert res.status_code == 422   # missing required header
+    assert res.status_code == 401   # no token and no session_id → unauthorized
 
 
 def test_upload_document_wrong_token():

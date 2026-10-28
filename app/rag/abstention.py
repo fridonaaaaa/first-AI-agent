@@ -2,15 +2,20 @@
 Abstention — refuse to answer when evidence is insufficient.
 
 Two-gate design:
-  Gate 1 (fast, no LLM): if the top retrieved chunk's RRF score is below
-  `rrf_threshold`, there is not enough evidence in the index. Abstain immediately.
+  Gate 1 (fast, no LLM): if the top retrieved chunk's cosine similarity is below
+  `cosine_threshold`, the search found nothing genuinely relevant. Abstain
+  immediately without calling the LLM.
 
-  Gate 2 (LLM sufficiency check): given the chunks and the query, ask the LLM
-  whether the chunks contain enough information to answer. If it says no,
-  abstain with what was found.
+  Why cosine similarity instead of RRF score: RRF scores are bounded below by
+  1/(k+top_k) ≈ 0.014 regardless of relevance, so a threshold below that value
+  can never fire.  Cosine similarity is a real relevance signal: values below
+  ~0.25 indicate the query vector and chunk vector have little in common.
 
-The abstention response is always in the user's original language. The message
-text is filled in by the calling pipeline using the i18n module.
+  Gate 2 (LLM sufficiency check): REMOVED. The answer-generation LLM naturally
+  qualifies its answer when evidence is partial, and a second LLM call was
+  rejecting valid hits on complex multi-hop questions.
+
+The abstention response text is filled in by the calling pipeline.
 """
 
 from __future__ import annotations
@@ -20,17 +25,11 @@ from dataclasses import dataclass
 from app.rag.llm.base import LLMClient
 from app.retrieval.rerank import CandidateChunk
 
-_SUFFICIENCY_SYSTEM = """You decide if a set of retrieved passages contains enough
-information to answer a question.
-Return a JSON object with one key:
-  "sufficient": true or false
-Output ONLY valid JSON."""
-
 
 @dataclass
 class AbstentionDecision:
     should_abstain: bool
-    reason: str    # "low_score" | "llm_insufficient" | "sufficient"
+    reason: str    # "low_score" | "sufficient"
     top_score: float
 
 
@@ -38,35 +37,38 @@ def check_abstention(
     query: str,
     chunks: list[CandidateChunk],
     llm: LLMClient,
-    rrf_threshold: float = 0.01,
+    cosine_threshold: float = 0.25,
 ) -> AbstentionDecision:
     """
     Decide whether to abstain from answering.
 
     Args:
-        query:         The rewritten English query.
-        chunks:        Reranked chunks (highest relevance first).
-        llm:           LLM client for the sufficiency check.
-        rrf_threshold: Minimum acceptable top-chunk RRF score.
+        query:            The rewritten English query (unused; kept for API compat).
+        chunks:           Reranked chunks (highest relevance first).
+        llm:              LLM client (unused; kept for API compat).
+        cosine_threshold: Minimum acceptable cosine similarity for the top chunk.
 
     Returns:
         AbstentionDecision. Check .should_abstain before generating an answer.
     """
-    top_score = chunks[0].rrf_score if chunks else 0.0
-
-    # Gate 1: no good chunks at all
-    if not chunks or top_score < rrf_threshold:
+    if not chunks:
         return AbstentionDecision(
             should_abstain=True,
             reason="low_score",
-            top_score=top_score,
+            top_score=0.0,
         )
 
-    # Gate 2 removed: the score threshold is sufficient for our corpus size.
-    # The answer-generation LLM will naturally qualify its answer when evidence
-    # is partial — a second LLM call here was rejecting valid hits.
+    top_cosine = max((c.cosine_sim for c in chunks), default=0.0)
+
+    if top_cosine < cosine_threshold:
+        return AbstentionDecision(
+            should_abstain=True,
+            reason="low_score",
+            top_score=top_cosine,
+        )
+
     return AbstentionDecision(
         should_abstain=False,
         reason="sufficient",
-        top_score=top_score,
+        top_score=top_cosine,
     )

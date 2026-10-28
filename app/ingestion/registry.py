@@ -16,6 +16,7 @@ from typing import Any
 
 import psycopg2.extras
 
+from app.core.errors import DocumentNotFoundError
 from app.ingestion.chunkers import Chunk
 from app.ingestion.dedupe import DedupeIndex, content_hash as compute_content_hash
 from app.ingestion.parsers import ParsedDocument
@@ -191,20 +192,23 @@ def update_document(
     doc_id: str,
     parsed: ParsedDocument,
     chunks: list[Chunk],
-) -> None:
+    dedupe_index: DedupeIndex | None = None,
+) -> str:
     """
     Replace an existing document's chunks in one transaction.
     BM25 stats are kept consistent: old terms decremented, new terms incremented.
+    Returns the doc_id (unchanged — update keeps the same ID).
+    Raises DocumentNotFoundError if doc_id does not exist.
     """
     cur = conn.cursor()
 
+    cur.execute("SELECT id FROM documents WHERE id = %s", (doc_id,))
+    if not cur.fetchone():
+        raise DocumentNotFoundError(f"Document {doc_id} not found.")
+
     # collect terms and token counts from old chunks before deleting
-    cur.execute(
-        "SELECT c.id, c.text FROM chunks c WHERE c.doc_id = %s",
-        (doc_id,),
-    )
-    old_chunks = cur.fetchall()
-    for old_chunk_id, old_text in old_chunks:
+    cur.execute("SELECT text FROM chunks WHERE doc_id = %s", (doc_id,))
+    for (old_text,) in cur.fetchall():
         terms = set(tokenise(old_text))
         tok_count = len(tokenise(old_text))
         _stats_decrement(cur, terms)
@@ -224,19 +228,31 @@ def update_document(
     )
 
     for chunk in chunks:
-        chunk_id, tok_count = _insert_chunk(cur, doc_id, chunk, None)
+        result = dedupe_index.check(chunk.text) if dedupe_index else None
+        dup_group = None
+        if result and not result.is_exact_dup:
+            dup_group = dedupe_index.register(result)
+
+        chunk_id, tok_count = _insert_chunk(cur, doc_id, chunk, dup_group)
         _index_chunk(cur, chunk_id, chunk.text)
         terms = set(tokenise(chunk.text))
         _stats_increment(cur, terms)
         _corpus_add(cur, tok_count)
+
+    return doc_id
 
 
 def delete_document(conn, doc_id: str) -> None:
     """
     Delete a document. Chunks and postings are removed via CASCADE.
     BM25 stats are updated for all affected terms.
+    Raises DocumentNotFoundError if doc_id does not exist.
     """
     cur = conn.cursor()
+
+    cur.execute("SELECT id FROM documents WHERE id = %s", (doc_id,))
+    if not cur.fetchone():
+        raise DocumentNotFoundError(f"Document {doc_id} not found.")
 
     cur.execute("SELECT text FROM chunks WHERE doc_id = %s", (doc_id,))
     old_texts = [row[0] for row in cur.fetchall()]
@@ -260,17 +276,20 @@ def list_documents(conn, limit: int = 50, offset: int = 0) -> list[dict[str, Any
         """,
         (limit, offset),
     )
-    cols = ["id", "source", "title", "format", "version", "language", "created_at"]
+    cols = ["id", "title", "source", "format", "version", "language", "created_at"]
     return [dict(zip(cols, row)) for row in cur.fetchall()]
 
 
-def get_document(conn, doc_id: str) -> dict[str, Any] | None:
-    """Return one document with its chunk count, or None if not found."""
+def get_document(conn, doc_id: str) -> dict[str, Any]:
+    """
+    Return one document dict with its chunk count.
+    Raises DocumentNotFoundError if doc_id does not exist.
+    """
     cur = conn.cursor()
     cur.execute(
         """
         SELECT d.id, d.title, d."source", d.format, d.version, d.language,
-               d.content_hash, d.metadata, d.created_at,
+               d.content_hash, d.metadata, d.created_at, d.session_id,
                COUNT(c.id) AS chunk_count
         FROM documents d
         LEFT JOIN chunks c ON c.doc_id = d.id
@@ -281,7 +300,9 @@ def get_document(conn, doc_id: str) -> dict[str, Any] | None:
     )
     row = cur.fetchone()
     if not row:
-        return None
+        raise DocumentNotFoundError(f"Document {doc_id} not found.")
     cols = ["id", "title", "source", "format", "version", "language",
-            "content_hash", "metadata", "created_at", "chunk_count"]
-    return dict(zip(cols, row))
+            "content_hash", "metadata", "created_at", "session_id", "chunk_count"]
+    d = dict(zip(cols, row))
+    d["doc_id"] = d["id"]
+    return d
