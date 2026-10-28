@@ -21,21 +21,24 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     configure_logging(settings.log_level, settings.environment)
 
-    # Run migrations with retries — Render containers sometimes need a moment
-    # to establish network connectivity before the DB becomes reachable.
-    last_exc: Exception | None = None
-    for attempt in range(5):
-        try:
-            with get_db() as conn:
-                apply_migrations(conn)
-            break
-        except Exception as exc:
-            last_exc = exc
-            _log.warning("migration_retry", attempt=attempt + 1, error=str(exc))
-            await asyncio.sleep(2.0 * (attempt + 1))
+    # Skip migration if DATABASE_URL was never configured (local dev without DB).
+    _db_url = get_settings().database_url
+    if "localhost" not in _db_url and "127.0.0.1" not in _db_url:
+        last_exc: Exception | None = None
+        for attempt in range(5):
+            try:
+                with get_db() as conn:
+                    apply_migrations(conn)
+                break
+            except Exception as exc:
+                last_exc = exc
+                _log.warning("migration_retry", attempt=attempt + 1, error=str(exc))
+                await asyncio.sleep(2.0 * (attempt + 1))
+        else:
+            _log.error("migration_failed", error=str(last_exc))
+            raise RuntimeError(f"DB migration failed after retries: {last_exc}") from last_exc
     else:
-        _log.error("migration_failed", error=str(last_exc))
-        raise RuntimeError(f"DB migration failed after retries: {last_exc}") from last_exc
+        _log.warning("migration_skipped", reason="DATABASE_URL points to localhost — set it in Render dashboard")
 
     # Warmup skipped — embedding backend may be remote (HF API) or local.
     # First query pays the cold-start cost either way.
