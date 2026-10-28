@@ -14,7 +14,7 @@ _pool: psycopg2.pool.ThreadedConnectionPool | None = None
 
 
 def _new_conn():
-    url = get_settings().database_url
+    url = get_settings().database_url.strip()
     conn = psycopg2.connect(url)
     psycopg2.extras.register_uuid(conn)
     return conn
@@ -23,7 +23,7 @@ def _new_conn():
 def _get_pool() -> psycopg2.pool.ThreadedConnectionPool:
     global _pool
     if _pool is None or _pool.closed:
-        url = get_settings().database_url
+        url = get_settings().database_url.strip()
         _pool = psycopg2.pool.ThreadedConnectionPool(1, 5, url)
     return _pool
 
