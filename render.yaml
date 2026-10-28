@@ -48,3 +48,5 @@ services:
         value: production
       - key: EMBEDDING_BACKEND
         value: hf_api
+      - key: HF_TOKEN
+        sync: false          # Set this in Render dashboard — your Hugging Face API token
