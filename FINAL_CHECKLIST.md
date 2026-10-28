@@ -123,8 +123,8 @@ Each item is marked: ✅ VERIFIED | ⚠️ PARTIAL | ❌ MISSING | 🔒 BLOCKED
 
 ## 8. Submission Artefacts
 
-- [ ] GitHub repository URL: _to be filled by owner_
-- [ ] Live demo URL: _to be filled by owner_
+- [x] GitHub repository URL: https://github.com/fridonaaaaa/first-AI-agent
+- [x] Live demo URL: https://first-ai-agent-rq2b.onrender.com/
 - [ ] `README.md` ✅
 - [ ] `docs/EVAL_REPORT.md` ✅
 - [ ] `docs/AI_USAGE.md` ✅

@@ -14,6 +14,9 @@ pinned: false
 
 **Upgaming Talent Growth Program — 2026 წ.**
 
+🔗 **ლაივ დემო:** https://first-ai-agent-rq2b.onrender.com/  
+📂 **GitHub:** https://github.com/fridonaaaaa/first-AI-agent
+
 ---
 
 ## რა შეუძლია სისტემას
@@ -54,7 +57,7 @@ PostgreSQL + pgvector (Supabase)
 
 **1. კლონირება**
 ```bash
-git clone <repo-url>
+git clone https://github.com/fridonaaaaa/first-AI-agent.git
 cd "first AI agent"
 cp .env.example .env
 # შეავსეთ .env: DATABASE_URL, ADMIN_TOKEN, GEMINI_API_KEY
@@ -93,7 +96,7 @@ docker compose up --build
 ## ტესტები
 
 ```bash
-pytest                          # 129 unit test — ყველა გადის
+pytest                          # 154 unit test — ყველა გადის
 pytest tests/test_registry.py   # ინტეგრ. (DB საჭიროა)
 ```
 
