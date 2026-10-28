@@ -36,6 +36,8 @@ class CandidateChunk:
     rrf_score: float
     text: str
     dup_group: str | None = field(default=None)
+    doc_id: str | None = field(default=None)
+    title: str | None = field(default=None)
 
 
 def _tokenise(text: str) -> set[str]:

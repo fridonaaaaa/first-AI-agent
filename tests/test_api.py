@@ -93,7 +93,7 @@ def test_ask_pipeline_error_returns_500_message():
 # /documents (admin-protected writes)
 # ---------------------------------------------------------------------------
 
-def _mock_add_document(conn, parsed, chunks, dedupe):
+def _mock_add_document(conn, parsed, chunks, dedupe, session_id=None):
     return "doc-abc-123"
 
 

@@ -35,19 +35,20 @@ def _fetch_chunk_rows(
     chunk_ids: list[str],
     conn: "psycopg2.extensions.connection",
 ) -> dict[str, dict]:
-    """Return {chunk_id: {text, dup_group}} for the given ids."""
+    """Return {chunk_id: {text, dup_group, doc_id, title}} for the given ids."""
     if not chunk_ids:
         return {}
     placeholders = ",".join(["%s"] * len(chunk_ids))
     sql = f"""
-        SELECT id, text, dup_group
-        FROM   chunks
-        WHERE  id IN ({placeholders})
+        SELECT c.id, c.text, c.dup_group, c.doc_id::text, d.title
+        FROM   chunks c
+        JOIN   documents d ON d.id = c.doc_id
+        WHERE  c.id IN ({placeholders})
     """
     with conn.cursor() as cur:
         cur.execute(sql, chunk_ids)
         rows = cur.fetchall()
-    return {r[0]: {"text": r[1], "dup_group": r[2]} for r in rows}
+    return {r[0]: {"text": r[1], "dup_group": r[2], "doc_id": r[3], "title": r[4]} for r in rows}
 
 
 def hybrid_search(
@@ -57,6 +58,7 @@ def hybrid_search(
     lambda_: float = 0.5,
     conn: "psycopg2.extensions.connection | None" = None,
     doc_id: str | None = None,
+    session_id: str | None = None,
 ) -> list[CandidateChunk]:
     """
     Full hybrid retrieval for one query.
@@ -68,6 +70,8 @@ def hybrid_search(
         lambda_:     Relevance vs coverage trade-off (passed to coverage_rerank).
         conn:        Optional existing DB connection.
         doc_id:      When set, restrict search to chunks from this document only.
+        session_id:  When set (and doc_id is not set), include only global docs
+                     (session_id IS NULL) plus this session's uploaded docs.
 
     Returns:
         Up to top_k CandidateChunk objects, ordered by the reranker.
@@ -77,11 +81,15 @@ def hybrid_search(
     def _run(c: "psycopg2.extensions.connection") -> list[CandidateChunk]:
         # 1. Dense search
         query_vec = encode_one(query)
-        dense_results = search_dense(query_vec, top_k=_CANDIDATE_POOL, conn=c, doc_id=doc_id)
+        dense_results = search_dense(
+            query_vec, top_k=_CANDIDATE_POOL, conn=c, doc_id=doc_id, session_id=session_id
+        )
 
         # 2. BM25 search
         bm25 = BM25Searcher(conn=c, k1=settings.bm25_k1, b=settings.bm25_b)
-        bm25_results = bm25.search(query, top_k=_CANDIDATE_POOL, doc_id=doc_id)
+        bm25_results = bm25.search(
+            query, top_k=_CANDIDATE_POOL, doc_id=doc_id, session_id=session_id
+        )
 
         # 3. Fuse
         fused = reciprocal_rank_fusion(
@@ -105,6 +113,8 @@ def hybrid_search(
                     rrf_score=rrf_score_map[cid],
                     text=rows[cid]["text"],
                     dup_group=rows[cid]["dup_group"],
+                    doc_id=rows[cid]["doc_id"],
+                    title=rows[cid]["title"],
                 )
             )
 

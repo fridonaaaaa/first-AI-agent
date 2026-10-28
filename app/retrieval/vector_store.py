@@ -25,6 +25,7 @@ def search_dense(
     top_k: int = 20,
     conn: "psycopg2.extensions.connection | None" = None,
     doc_id: str | None = None,
+    session_id: str | None = None,
 ) -> list[tuple[str, float]]:
     """
     Find the top_k most similar chunks to query_vector.
@@ -35,6 +36,8 @@ def search_dense(
         conn:         Optional existing connection (for testing / bulk jobs).
                       If None, a fresh connection is opened and closed.
         doc_id:       When set, restrict search to chunks from this document.
+        session_id:   When set (and doc_id is not set), restrict to global docs
+                      (session_id IS NULL) plus this session's uploaded docs.
 
     Returns:
         List of (chunk_id, similarity) sorted by similarity descending.
@@ -44,22 +47,34 @@ def search_dense(
 
     if doc_id is not None:
         sql = """
-            SELECT id,
-                   1 - (embedding <=> %s::vector) AS similarity
-            FROM   chunks
-            WHERE  doc_id = %s::uuid
-              AND  embedding IS NOT NULL
-            ORDER  BY embedding <=> %s::vector
+            SELECT c.id,
+                   1 - (c.embedding <=> %s::vector) AS similarity
+            FROM   chunks c
+            WHERE  c.doc_id = %s::uuid
+              AND  c.embedding IS NOT NULL
+            ORDER  BY c.embedding <=> %s::vector
             LIMIT  %s
         """
         params = (vec_str, doc_id, vec_str, top_k)
+    elif session_id is not None:
+        sql = """
+            SELECT c.id,
+                   1 - (c.embedding <=> %s::vector) AS similarity
+            FROM   chunks c
+            JOIN   documents d ON d.id = c.doc_id
+            WHERE  c.embedding IS NOT NULL
+              AND  (d.session_id IS NULL OR d.session_id = %s)
+            ORDER  BY c.embedding <=> %s::vector
+            LIMIT  %s
+        """
+        params = (vec_str, session_id, vec_str, top_k)
     else:
         sql = """
-            SELECT id,
-                   1 - (embedding <=> %s::vector) AS similarity
-            FROM   chunks
-            WHERE  embedding IS NOT NULL
-            ORDER  BY embedding <=> %s::vector
+            SELECT c.id,
+                   1 - (c.embedding <=> %s::vector) AS similarity
+            FROM   chunks c
+            WHERE  c.embedding IS NOT NULL
+            ORDER  BY c.embedding <=> %s::vector
             LIMIT  %s
         """
         params = (vec_str, vec_str, top_k)

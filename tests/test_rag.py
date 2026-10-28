@@ -205,7 +205,7 @@ _FAKE_CHUNKS = [
 ]
 
 
-def _mock_hybrid(query, sub_queries, top_k=10, lambda_=0.5, conn=None, doc_id=None):
+def _mock_hybrid(query, sub_queries, top_k=10, lambda_=0.5, conn=None, doc_id=None, session_id=None):
     return _FAKE_CHUNKS
 
 

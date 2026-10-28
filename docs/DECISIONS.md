@@ -184,3 +184,21 @@ model and corpus might approach.
 **Alternatives rejected:** Railway (free tier removed), Fly.io (requires credit card for free tier).
 
 **Changed by owner:**
+
+---
+
+## 2026-10-28 — Per-chat session isolation + source document names
+
+**Decision:** Added three UX features:
+
+1. **Source document names in "წყაროები"**: Added `doc_id` and `title` fields to `CandidateChunk`; joined `chunks` with `documents` in `_fetch_chunk_rows`; `SourceInfo` now carries `title`; UI shows the document name as the source header.
+
+2. **Per-chat document isolation**: Added `session_id text` column to `documents` (applied via idempotent migration in `app/core/migrations.py` on startup). Documents uploaded in a chat are tagged with the chat's UUID. Search filters `(session_id IS NULL OR session_id = ?)` so each chat sees the global corpus plus only its own uploads.
+
+3. **Full session management in UI**: Replaced the Q&A history array with proper session objects `{id, label, messages, files, activeDocId}`, each with a UUID. "ახალი საუბარი" creates a new session. Sessions are persisted to localStorage under `ai_sessions_v2`. Switching sessions swaps the chat view and the files list.
+
+**Why `session_id` on `documents` rather than `chunks`:** Avoids denormalization; the join with the small `documents` table is cheap. Dedup scoped per-session so two chats can independently upload the same file.
+
+**Alternatives rejected:** Storing `session_id` on chunks (redundant, harder to migrate); server-side session store (no server state needed — client UUID is sufficient).
+
+**Changed by owner:**

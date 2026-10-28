@@ -88,6 +88,7 @@ def run_pipeline(
     top_k: int | None = None,
     max_tool_steps: int | None = None,
     doc_id: str | None = None,
+    session_id: str | None = None,
 ) -> PipelineResult:
     """
     Run the full RAG pipeline for one user question.
@@ -128,7 +129,7 @@ def run_pipeline(
     # 1. Initial search with the raw query — used for both early-exit and as
     #    the seed result set.  Only one DB round-trip before the LLM is called.
     initial_chunks = hybrid_search(
-        raw_query, sub_queries=[raw_query], top_k=k, conn=conn, doc_id=doc_id
+        raw_query, sub_queries=[raw_query], top_k=k, conn=conn, doc_id=doc_id, session_id=session_id
     )
 
     # Early exit: nothing found at all, or best score is below the threshold.
@@ -156,7 +157,7 @@ def run_pipeline(
             return
         steps += 1
         new_chunks = hybrid_search(
-            query, sub_queries=subs, top_k=k, conn=conn, doc_id=doc_id
+            query, sub_queries=subs, top_k=k, conn=conn, doc_id=doc_id, session_id=session_id
         )
         for chunk in new_chunks:
             if chunk.chunk_id not in seen_ids:

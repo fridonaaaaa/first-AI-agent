@@ -100,7 +100,9 @@ class BM25Searcher:
         row = cur.fetchone()
         return row[0] if row else 0
 
-    def _get_postings(self, term: str, doc_id: str | None = None) -> list[tuple[str, float, int]]:
+    def _get_postings(
+        self, term: str, doc_id: str | None = None, session_id: str | None = None
+    ) -> list[tuple[str, float, int]]:
         """Return [(chunk_id, tf_norm, dl), ...] for a term."""
         if self._index is not None:
             return self._index.get(term, [])
@@ -116,6 +118,18 @@ class BM25Searcher:
                 """,
                 (term, doc_id),
             )
+        elif session_id is not None:
+            cur.execute(
+                """
+                SELECT bp.chunk_id, bp.tf,
+                       COALESCE((c.metadata->>'token_count')::int, 1) AS dl
+                FROM bm25_postings bp
+                JOIN chunks c ON c.id = bp.chunk_id
+                JOIN documents d ON d.id = c.doc_id
+                WHERE bp.term = %s AND (d.session_id IS NULL OR d.session_id = %s)
+                """,
+                (term, session_id),
+            )
         else:
             cur.execute(
                 """
@@ -130,7 +144,10 @@ class BM25Searcher:
         return [(row[0], row[1], row[2]) for row in cur.fetchall()]
 
     def _fetch_all_terms(
-        self, tokens: list[str], doc_id: str | None = None
+        self,
+        tokens: list[str],
+        doc_id: str | None = None,
+        session_id: str | None = None,
     ) -> tuple[dict[str, int], dict[str, list[tuple[str, float, int]]]]:
         """
         Batch-fetch df and postings for all tokens in two queries instead of 2N.
@@ -157,6 +174,19 @@ class BM25Searcher:
                 """,
                 tokens + [doc_id],
             )
+        elif session_id is not None:
+            cur.execute(
+                f"""
+                SELECT bp.term, bp.chunk_id, bp.tf,
+                       COALESCE((c.metadata->>'token_count')::int, 1) AS dl
+                FROM bm25_postings bp
+                JOIN chunks c ON c.id = bp.chunk_id
+                JOIN documents d ON d.id = c.doc_id
+                WHERE bp.term IN ({placeholders})
+                  AND (d.session_id IS NULL OR d.session_id = %s)
+                """,
+                tokens + [session_id],
+            )
         else:
             cur.execute(
                 f"""
@@ -174,7 +204,9 @@ class BM25Searcher:
 
         return df_map, postings_map
 
-    def search_index(self, query: str, top_k: int = 10, doc_id: str | None = None) -> list[tuple[str, float]]:
+    def search_index(
+        self, query: str, top_k: int = 10, doc_id: str | None = None, session_id: str | None = None
+    ) -> list[tuple[str, float]]:
         """
         Score all chunks matching any query term.
         Returns [(chunk_id, score), ...] sorted by score descending.
@@ -191,7 +223,9 @@ class BM25Searcher:
 
         if self._conn is not None:
             # DB path: fetch all terms in two queries instead of 2N round-trips.
-            df_map, postings_map = self._fetch_all_terms(tokens, doc_id=doc_id)
+            df_map, postings_map = self._fetch_all_terms(
+                tokens, doc_id=doc_id, session_id=session_id
+            )
             for term in tokens:
                 df = df_map.get(term, 0)
                 if df == 0:
@@ -212,6 +246,8 @@ class BM25Searcher:
         ranked = sorted(scores.items(), key=lambda x: x[1], reverse=True)
         return ranked[:top_k]
 
-    def search(self, query: str, top_k: int = 10, doc_id: str | None = None) -> list[tuple[str, float]]:
+    def search(
+        self, query: str, top_k: int = 10, doc_id: str | None = None, session_id: str | None = None
+    ) -> list[tuple[str, float]]:
         """Alias used by hybrid.py."""
-        return self.search_index(query, top_k, doc_id=doc_id)
+        return self.search_index(query, top_k, doc_id=doc_id, session_id=session_id)

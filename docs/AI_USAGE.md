@@ -141,3 +141,23 @@ Log of what Claude Code generated each session. Owner fills in "Changed by owner
 - `.env`: ABSTENTION_THRESHOLD=0.005 (calibrated to actual RRF score range)
 
 Changed by owner:
+
+---
+
+## Session 2026-10-28
+
+**Generated:**
+- `app/retrieval/rerank.py`: added `doc_id` and `title` fields to `CandidateChunk`
+- `app/retrieval/hybrid.py`: updated `_fetch_chunk_rows` to JOIN with `documents`; added `session_id` param to `hybrid_search`
+- `app/retrieval/vector_store.py`: added `session_id` filter branch to `search_dense`
+- `app/retrieval/bm25.py`: added `session_id` param to `_get_postings`, `_fetch_all_terms`, `search_index`, `search`
+- `app/rag/pipeline.py`: threaded `session_id` through `run_pipeline` → `hybrid_search`
+- `app/api/routes/ask.py`: added `session_id` to `AskRequest`; added `title` to `SourceInfo`
+- `app/api/routes/documents.py`: added `session_id` to `UploadRequest` and file upload form field
+- `app/ingestion/registry.py`: scoped dedup and INSERT to `session_id`
+- `app/core/migrations.py`: new file — idempotent `ALTER TABLE` for `session_id` column
+- `app/main.py`: calls `apply_migrations` at startup
+- `app/ui/index.html`: full session management rewrite — per-session messages, files, UUID sessions, localStorage persistence
+- `tests/test_api.py`, `tests/test_rag.py`: updated mocks to accept new `session_id` kwarg
+
+Changed by owner:

@@ -619,17 +619,12 @@
 <script>
 // ── i18n ─────────────────────────────────────────────────────────────────────
 function t(k) { return I18N[k] || k; }
-
-function httpErr(status) {
-  return I18N["err" + status] || t("errorMsg");
-}
+function httpErr(status) { return I18N["err" + status] || t("errorMsg"); }
 
 function applyI18n() {
   document.title                                           = t("appTitle");
   document.getElementById("app-title").textContent        = t("appTitle");
   document.getElementById("app-subtitle").textContent     = t("appSubtitle");
-  document.getElementById("welcome-title").textContent    = t("appTitle");
-  document.getElementById("welcome-sub").textContent      = t("questionPlaceholder");
   document.getElementById("question").placeholder         = t("questionPlaceholder");
   document.getElementById("admin-title").textContent      = t("uploadTitle");
   document.getElementById("token-label").textContent      = t("tokenLabel");
@@ -639,45 +634,163 @@ function applyI18n() {
   document.getElementById("upload-btn").textContent       = t("uploadButton");
 }
 
-// ── Uploaded files (persisted across refreshes via localStorage) ──────────────
-const uploadedFiles = [];   // [{doc_id, name}]
-let activeDocId = null;
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function uuidv4() {
+  return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+  );
+}
+
+// ── Session state ────────────────────────────────────────────────────────────
+// Each session: { id, label, messages: [{role, text?, data?}], files: [{doc_id, name}], activeDocId }
+// role = "user" → {role, text}
+// role = "ai"   → {role, data}
+let _sessions = [];
+let _currentId = null;
 let _lastToken = "";
 
-const _LS_FILES = "ai_files";
-const _LS_TOKEN = "ai_token";
+const _LS_SESSIONS = "ai_sessions_v2";
+const _LS_CURRENT  = "ai_current_session";
+const _LS_TOKEN    = "ai_token";
 
-function _saveFiles() {
-  localStorage.setItem(_LS_FILES, JSON.stringify(uploadedFiles));
-  if (_lastToken) localStorage.setItem(_LS_TOKEN, _lastToken);
+function _currentSession() {
+  return _sessions.find(s => s.id === _currentId) || null;
 }
 
-function _loadFiles() {
+function _saveSessions() {
+  // Cap each session to 20 messages to avoid blowing localStorage quota
+  const slim = _sessions.map(s => ({
+    ...s,
+    messages: s.messages.slice(-20),
+  }));
   try {
-    const saved = JSON.parse(localStorage.getItem(_LS_FILES) || "[]");
-    uploadedFiles.push(...saved);
-    _lastToken = localStorage.getItem(_LS_TOKEN) || "";
+    localStorage.setItem(_LS_SESSIONS, JSON.stringify(slim));
+    localStorage.setItem(_LS_CURRENT, _currentId || "");
+    if (_lastToken) localStorage.setItem(_LS_TOKEN, _lastToken);
   } catch {}
-  if (uploadedFiles.length) {
-    document.getElementById("files-section").style.display = "";
-    renderFilesList();
-  }
 }
 
-function addUploadedFile(doc_id, name) {
-  if (!uploadedFiles.find(f => f.doc_id === doc_id)) {
-    uploadedFiles.unshift({ doc_id, name });
+function _loadSessions() {
+  try {
+    const raw = localStorage.getItem(_LS_SESSIONS);
+    if (raw) _sessions = JSON.parse(raw);
+    _currentId = localStorage.getItem(_LS_CURRENT) || null;
+    _lastToken = localStorage.getItem(_LS_TOKEN) || "";
+  } catch { _sessions = []; _currentId = null; }
+
+  // Validate currentId
+  if (_currentId && !_sessions.find(s => s.id === _currentId)) _currentId = null;
+
+  // Always have at least one session
+  if (_sessions.length === 0) _createSession();
+  else if (!_currentId) _currentId = _sessions[0].id;
+}
+
+function _createSession() {
+  const s = {
+    id: uuidv4(),
+    label: "ახალი საუბარი",
+    messages: [],
+    files: [],
+    activeDocId: null,
+  };
+  _sessions.unshift(s);
+  _currentId = s.id;
+  _saveSessions();
+  return s;
+}
+
+// ── Chat rendering ────────────────────────────────────────────────────────────
+function _welcomeHTML() {
+  return `<div id="welcome" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;color:var(--muted)">
+    <div class="logo"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+    <h2 style="font-size:1.3rem;color:var(--text);margin-bottom:.4rem">${t("appTitle")}</h2>
+    <p style="font-size:.9rem;max-width:360px">${t("questionPlaceholder")}</p>
+  </div>`;
+}
+
+function _userRowHTML(text) {
+  return `<div class="message-row user">
+    <div class="avatar user-av">U</div>
+    <div class="bubble user-bubble">${escHtml(text)}</div>
+  </div>`;
+}
+
+function _aiBubbleHTML(data) {
+  const cls = data._error ? "error" : data.abstained ? "abstained" : "";
+  const lang = (data.language === "georgian") ? t("langGeorgian") : t("langEnglish");
+  const cleanAnswer = data.answer.replace(/\s*\[[^\]]*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[^\]]*\]/gi, '');
+  let inner = `<div class="answer-text">${escHtml(cleanAnswer)}</div>`;
+  if (!data._error) {
+    inner += `<div class="bubble-meta"><span>${lang}</span><span>${t("stepsLabel")}: ${data.steps_used}</span></div>`;
+    const sources = data.sources || [];
+    if (sources.length > 0) {
+      inner += `<details><summary>${t("sourcesTitle")} (${sources.length})</summary>${
+        sources.map(s => {
+          const docName = s.title ? escHtml(s.title) : `<span style="font-family:monospace;font-size:.71rem;color:var(--muted)">${escHtml(s.chunk_id.slice(0,8))}</span>`;
+          return `<div class="source-card">
+            <div class="source-header">
+              <span style="font-weight:600;font-size:.82rem">${docName}</span>
+              <span class="score-pill">${s.rrf_score.toFixed(4)}</span>
+            </div>
+            <div class="source-text">${escHtml(s.text.slice(0,280))}${s.text.length>280?"…":""}</div>
+          </div>`;
+        }).join("")
+      }</details>`;
+    } else {
+      inner += `<div style="font-size:.8rem;color:var(--muted);margin-top:.5rem">${t("noSources")}</div>`;
+    }
   }
-  activeDocId = doc_id;
-  _saveFiles();
-  document.getElementById("files-section").style.display = "";
-  renderFilesList();
+  return `<div class="message-row">
+    <div class="avatar ai-av">AI</div>
+    <div class="bubble ai-bubble ${cls}">${inner}</div>
+  </div>`;
+}
+
+function renderChat() {
+  const s = _currentSession();
+  const chat = document.getElementById("chat-area");
+  if (!s || s.messages.length === 0) {
+    chat.innerHTML = _welcomeHTML();
+    return;
+  }
+  chat.innerHTML = "";
+  for (const m of s.messages) {
+    const div = document.createElement("div");
+    if (m.role === "user") div.innerHTML = _userRowHTML(m.text);
+    else                   div.innerHTML = _aiBubbleHTML(m.data);
+    chat.appendChild(div.firstElementChild);
+  }
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function renderHistory() {
+  const list = document.getElementById("history-list");
+  list.innerHTML = "";
+  _sessions.forEach(s => {
+    const el = document.createElement("div");
+    el.className = "history-item" + (s.id === _currentId ? " active" : "");
+    el.textContent = s.label;
+    el.title = s.label;
+    el.onclick = () => switchSession(s.id);
+    list.appendChild(el);
+  });
 }
 
 function renderFilesList() {
+  const s = _currentSession();
+  const files = s ? s.files : [];
+  const activeDocId = s ? s.activeDocId : null;
+  const section = document.getElementById("files-section");
   const list = document.getElementById("files-list");
+  if (!files.length) { section.style.display = "none"; return; }
+  section.style.display = "";
   list.innerHTML = "";
-  uploadedFiles.forEach(f => {
+  files.forEach(f => {
     const el = document.createElement("div");
     el.className = "file-item" + (f.doc_id === activeDocId ? " active" : "");
     el.innerHTML = `
@@ -690,18 +803,59 @@ function renderFilesList() {
   updateFileChip();
 }
 
-function toggleFileFilter(doc_id) {
-  activeDocId = (activeDocId === doc_id) ? null : doc_id;
+function updateFileChip() {
+  const s = _currentSession();
+  const activeDocId = s ? s.activeDocId : null;
+  const chip = document.getElementById("file-filter-chip");
+  const label = document.getElementById("file-filter-name");
+  if (activeDocId && s) {
+    const f = s.files.find(x => x.doc_id === activeDocId);
+    label.textContent = f ? f.name : activeDocId.slice(0, 8);
+    chip.classList.add("visible");
+  } else {
+    chip.classList.remove("visible");
+  }
+}
+
+// ── Session actions ───────────────────────────────────────────────────────────
+function newChat() {
+  _createSession();
+  renderHistory();
+  renderChat();
   renderFilesList();
+  updateFileChip();
+}
+
+function switchSession(id) {
+  if (_currentId === id) return;
+  _currentId = id;
+  _saveSessions();
+  renderHistory();
+  renderChat();
+  renderFilesList();
+  updateFileChip();
+}
+
+// ── File actions ──────────────────────────────────────────────────────────────
+function toggleFileFilter(doc_id) {
+  const s = _currentSession();
+  if (!s) return;
+  s.activeDocId = (s.activeDocId === doc_id) ? null : doc_id;
+  _saveSessions();
+  renderFilesList();
+  updateFileChip();
 }
 
 function clearFileFilter() {
-  activeDocId = null;
+  const s = _currentSession();
+  if (!s) return;
+  s.activeDocId = null;
+  _saveSessions();
   renderFilesList();
+  updateFileChip();
 }
 
 async function deleteFile(doc_id) {
-  // Show spinner on the ✕ button while deleting
   const delBtn = document.querySelector(`.file-del[onclick*="${doc_id}"]`);
   if (delBtn) delBtn.innerHTML = '<span class="file-del-spinner"></span>';
 
@@ -712,171 +866,70 @@ async function deleteFile(doc_id) {
     });
   } catch {}
 
-  const idx = uploadedFiles.findIndex(f => f.doc_id === doc_id);
-  if (idx !== -1) uploadedFiles.splice(idx, 1);
-  if (activeDocId === doc_id) activeDocId = null;
-  _saveFiles();
-  if (!uploadedFiles.length) document.getElementById("files-section").style.display = "none";
+  const s = _currentSession();
+  if (s) {
+    s.files = s.files.filter(f => f.doc_id !== doc_id);
+    if (s.activeDocId === doc_id) s.activeDocId = null;
+  }
+  _saveSessions();
   renderFilesList();
   updateFileChip();
 }
 
-function updateFileChip() {
-  const chip = document.getElementById("file-filter-chip");
-  const label = document.getElementById("file-filter-name");
-  if (activeDocId) {
-    const f = uploadedFiles.find(x => x.doc_id === activeDocId);
-    label.textContent = f ? f.name : activeDocId.slice(0, 8);
-    chip.classList.add("visible");
-  } else {
-    chip.classList.remove("visible");
-  }
-}
-
-// ── Session history ───────────────────────────────────────────────────────────
-const sessions = [];   // [{id, question, data}]
-let activeId = null;
-
-function addToHistory(question, data) {
-  const id = Date.now();
-  sessions.unshift({ id, question, data });
-  activeId = id;
-  renderHistory();
-  return id;
-}
-
-function renderHistory() {
-  const list = document.getElementById("history-list");
-  list.innerHTML = "";
-  sessions.forEach(s => {
-    const el = document.createElement("div");
-    el.className = "history-item" + (s.id === activeId ? " active" : "");
-    el.textContent = s.question;
-    el.title = s.question;
-    el.onclick = () => loadSession(s.id);
-    list.appendChild(el);
-  });
-}
-
-function loadSession(id) {
-  const s = sessions.find(x => x.id === id);
-  if (!s) return;
-  activeId = id;
-  renderHistory();
-  const chat = document.getElementById("chat-area");
-  chat.innerHTML = "";
-  appendUserBubble(s.question);
-  appendAIBubble(s.data);
-}
-
-function newChat() {
-  activeId = null;
-  renderHistory();
-  const chat = document.getElementById("chat-area");
-  chat.innerHTML = document.getElementById("welcome") ? "" : "";
-  // re-create welcome
-  const w = document.createElement("div");
-  w.id = "welcome";
-  w.innerHTML = `
-    <div class="logo"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
-    <h2>${t("appTitle")}</h2>
-    <p>${t("questionPlaceholder")}</p>`;
-  chat.appendChild(w);
-}
-
-// ── Chat rendering ────────────────────────────────────────────────────────────
-function hideWelcome() {
-  const w = document.getElementById("welcome");
-  if (w) w.remove();
-}
-
-function appendUserBubble(text) {
-  hideWelcome();
+// ── Submit ────────────────────────────────────────────────────────────────────
+function _appendTyping() {
   const chat = document.getElementById("chat-area");
   const row = document.createElement("div");
-  row.className = "message-row user";
-  row.innerHTML = `
-    <div class="avatar user-av">U</div>
-    <div class="bubble user-bubble">${escHtml(text)}</div>`;
+  row.className = "message-row"; row.id = "typing-row";
+  row.innerHTML = `<div class="avatar ai-av">AI</div>
+    <div class="bubble ai-bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
   chat.appendChild(row);
   chat.scrollTop = chat.scrollHeight;
 }
 
-function appendTyping() {
-  const chat = document.getElementById("chat-area");
-  const row = document.createElement("div");
-  row.className = "message-row";
-  row.id = "typing-row";
-  row.innerHTML = `
-    <div class="avatar ai-av">AI</div>
-    <div class="bubble ai-bubble">
-      <div class="typing-indicator"><span></span><span></span><span></span></div>
-    </div>`;
-  chat.appendChild(row);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-function removeTyping() {
+function _removeTyping() {
   const el = document.getElementById("typing-row");
   if (el) el.remove();
 }
 
-function appendAIBubble(data) {
-  const chat = document.getElementById("chat-area");
-  const row = document.createElement("div");
-  row.className = "message-row";
-
-  const cls = data._error ? "error" : data.abstained ? "abstained" : "";
-  const lang = (data.language === "georgian") ? t("langGeorgian") : t("langEnglish");
-
-  // Strip UUID citation tags like [4783f15d-6580-4dd0-a3c7-b30191b99e1a] from display.
-  // Sources are shown separately below.
-  const cleanAnswer = data.answer.replace(/\s*\[[^\]]*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[^\]]*\]/gi, '');
-  let inner = `<div class="answer-text">${escHtml(cleanAnswer)}</div>`;
-
-  if (!data._error) {
-    inner += `<div class="bubble-meta"><span>${lang}</span><span>${t("stepsLabel")}: ${data.steps_used}</span></div>`;
-
-    const sources = data.sources || [];
-    if (sources.length > 0) {
-      inner += `<details><summary>${t("sourcesTitle")} (${sources.length})</summary>${
-        sources.map(s => `
-          <div class="source-card">
-            <div class="source-text">${escHtml(s.text.slice(0,280))}${s.text.length>280?"…":""}</div>
-          </div>`).join("")
-      }</details>`;
-    } else {
-      inner += `<div style="font-size:.8rem;color:var(--muted);margin-top:.5rem">${t("noSources")}</div>`;
-    }
-  }
-
-  row.innerHTML = `
-    <div class="avatar ai-av">AI</div>
-    <div class="bubble ai-bubble ${cls}">${inner}</div>`;
-  chat.appendChild(row);
-  chat.scrollTop = chat.scrollHeight;
-}
-
-// ── Submit ────────────────────────────────────────────────────────────────────
 async function submitQuestion() {
   const ta = document.getElementById("question");
   const q = ta.value.trim();
   if (!q) return;
+
+  const s = _currentSession();
+  if (!s) return;
 
   const btn = document.getElementById("send-btn");
   btn.disabled = true;
   ta.value = "";
   ta.style.height = "";
 
-  appendUserBubble(q);
-  appendTyping();
+  // Update session label on first message
+  if (s.messages.length === 0) {
+    s.label = q.length > 40 ? q.slice(0, 40) + "…" : q;
+  }
+  s.messages.push({ role: "user", text: q });
+  _saveSessions();
+
+  // Show user bubble and typing indicator
+  const chat = document.getElementById("chat-area");
+  // Remove welcome screen if present
+  const w = document.getElementById("welcome");
+  if (w) w.remove();
+  const uDiv = document.createElement("div");
+  uDiv.innerHTML = _userRowHTML(q);
+  chat.appendChild(uDiv.firstElementChild);
+  chat.scrollTop = chat.scrollHeight;
+  _appendTyping();
+  renderHistory();
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 120000);
 
   try {
-    const askBody = { question: q };
-    if (activeDocId) askBody.doc_id = activeDocId;
+    const askBody = { question: q, session_id: s.id };
+    if (s.activeDocId) askBody.doc_id = s.activeDocId;
     const res = await fetch("/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -884,17 +937,28 @@ async function submitQuestion() {
       signal: controller.signal,
     });
     const data = await res.json();
-    removeTyping();
-    if (!res.ok) {
-      appendAIBubble({ answer: httpErr(res.status), _error: true, steps_used: 0 });
-    } else {
-      addToHistory(q, data);
-      appendAIBubble(data);
-    }
+    _removeTyping();
+
+    const aiData = !res.ok
+      ? { answer: httpErr(res.status), _error: true, steps_used: 0 }
+      : data;
+
+    s.messages.push({ role: "ai", data: aiData });
+    _saveSessions();
+
+    const aDiv = document.createElement("div");
+    aDiv.innerHTML = _aiBubbleHTML(aiData);
+    chat.appendChild(aDiv.firstElementChild);
+    chat.scrollTop = chat.scrollHeight;
   } catch (e) {
-    removeTyping();
-    const msg = e.name === "AbortError" ? t("timeoutMsg") : t("errorMsg");
-    appendAIBubble({ answer: msg, _error: true, steps_used: 0 });
+    _removeTyping();
+    const aiData = { answer: e.name === "AbortError" ? t("timeoutMsg") : t("errorMsg"), _error: true, steps_used: 0 };
+    s.messages.push({ role: "ai", data: aiData });
+    _saveSessions();
+    const aDiv = document.createElement("div");
+    aDiv.innerHTML = _aiBubbleHTML(aiData);
+    chat.appendChild(aDiv.firstElementChild);
+    chat.scrollTop = chat.scrollHeight;
   } finally {
     clearTimeout(timer);
     btn.disabled = false;
@@ -928,13 +992,9 @@ function setupDropZone() {
   zone.addEventListener("dragover", e => { e.preventDefault(); zone.classList.add("dragover"); });
   zone.addEventListener("dragleave", () => zone.classList.remove("dragover"));
   zone.addEventListener("drop", e => {
-    e.preventDefault();
-    zone.classList.remove("dragover");
+    e.preventDefault(); zone.classList.remove("dragover");
     const f = e.dataTransfer.files[0];
-    if (f) {
-      _selectedFile = f;
-      document.getElementById("drop-filename").textContent = f.name;
-    }
+    if (f) { _selectedFile = f; document.getElementById("drop-filename").textContent = f.name; }
   });
 }
 
@@ -950,8 +1010,10 @@ async function uploadFile() {
   btn.innerHTML = '<span class="spin-icon"></span>იტვირთება...';
   msg.textContent = "";
 
+  const s = _currentSession();
   const form = new FormData();
   form.append("file", _selectedFile);
+  if (s) form.append("session_id", s.id);
 
   try {
     const res = await fetch("/documents/upload", {
@@ -964,18 +1026,22 @@ async function uploadFile() {
       msg.className = "err";
       msg.textContent = httpErr(res.status);
     } else {
-      addUploadedFile(data.doc_id, _selectedFile.name);
+      if (s && !s.files.find(f => f.doc_id === data.doc_id)) {
+        s.files.unshift({ doc_id: data.doc_id, name: _selectedFile.name });
+        s.activeDocId = data.doc_id;
+        _saveSessions();
+      }
+      renderFilesList();
+      updateFileChip();
       _selectedFile = null;
       document.getElementById("drop-filename").textContent = "";
       document.getElementById("file-input").value = "";
       setTimeout(closeAdmin, 800);
     }
   } catch {
-    msg.className = "err";
-    msg.textContent = t("errorMsg");
+    msg.className = "err"; msg.textContent = t("errorMsg");
   } finally {
-    btn.disabled = false;
-    btn.textContent = t("uploadButton");
+    btn.disabled = false; btn.textContent = t("uploadButton");
   }
 }
 
@@ -990,38 +1056,43 @@ async function uploadDocument() {
   const ubtn = document.getElementById("upload-btn");
   ubtn.disabled = true;
   ubtn.innerHTML = '<span class="spin-icon"></span>იტვირთება...';
+
+  const s = _currentSession();
   try {
     const res = await fetch("/documents", {
       method: "POST",
       headers: { "Content-Type": "application/json", "X-Admin-Token": token },
-      body: JSON.stringify({ title, text, source, format:"text", language:"en", chunking_strategy:"sentence_window" }),
+      body: JSON.stringify({ title, text, source, format:"text", language:"en", chunking_strategy:"sentence_window", session_id: s ? s.id : null }),
     });
     const data = await res.json();
     if (!res.ok) { msg.className="err"; msg.textContent = httpErr(res.status); }
     else {
-      addUploadedFile(data.doc_id, title);
+      if (s && !s.files.find(f => f.doc_id === data.doc_id)) {
+        s.files.unshift({ doc_id: data.doc_id, name: title });
+        s.activeDocId = data.doc_id;
+        _saveSessions();
+      }
+      renderFilesList();
+      updateFileChip();
       document.getElementById("doc-title").value = "";
       document.getElementById("doc-text").value  = "";
       document.getElementById("doc-source").value = "";
       setTimeout(closeAdmin, 800);
     }
   } catch { msg.className="err"; msg.textContent = t("errorMsg"); }
-  finally {
-    ubtn.disabled = false;
-    ubtn.textContent = t("uploadButton");
-  }
+  finally { ubtn.disabled = false; ubtn.textContent = t("uploadButton"); }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-function escHtml(s) {
-  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-}
-
-// Auto-resize textarea
+// ── Boot ─────────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   applyI18n();
   setupDropZone();
-  _loadFiles();
+  _loadSessions();
+  renderHistory();
+  renderChat();
+  renderFilesList();
+  updateFileChip();
+
   const ta = document.getElementById("question");
   ta.addEventListener("input", () => {
     ta.style.height = "";

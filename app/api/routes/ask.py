@@ -27,12 +27,14 @@ log = get_logger("ask")
 class AskRequest(BaseModel):
     question: str = Field(..., min_length=1, max_length=2000)
     doc_id: str | None = Field(None, description="Restrict search to this document's chunks.")
+    session_id: str | None = Field(None, max_length=100, description="Chat session ID for per-session document isolation.")
 
 
 class SourceInfo(BaseModel):
     chunk_id: str
     text: str
     rrf_score: float
+    title: str | None = None
 
 
 class ConflictInfo(BaseModel):
@@ -61,7 +63,7 @@ async def ask(request: Request, body: AskRequest) -> AskResponse:
     llm = get_llm_client()
 
     try:
-        result = run_pipeline(body.question, llm, doc_id=body.doc_id)
+        result = run_pipeline(body.question, llm, doc_id=body.doc_id, session_id=body.session_id)
     except InvestigationEngineError as exc:
         log.error("pipeline_error", question=body.question[:80], error=str(exc))
         return AskResponse(
@@ -89,7 +91,7 @@ async def ask(request: Request, body: AskRequest) -> AskResponse:
         answer=result.answer,
         language=result.language,
         sources=[
-            SourceInfo(chunk_id=c.chunk_id, text=c.text, rrf_score=c.rrf_score)
+            SourceInfo(chunk_id=c.chunk_id, text=c.text, rrf_score=c.rrf_score, title=c.title)
             for c in result.chunks
             if c.chunk_id in cited_ids
         ],

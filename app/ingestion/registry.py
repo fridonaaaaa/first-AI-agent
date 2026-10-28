@@ -129,22 +129,31 @@ def add_document(
     parsed: ParsedDocument,
     chunks: list[Chunk],
     dedupe_index: DedupeIndex | None = None,
+    session_id: str | None = None,
 ) -> str | None:
     """
     Insert a document and its chunks in one transaction.
 
     Returns the new doc_id (UUID string), or None if the document
     is an exact duplicate (same content_hash already in the DB).
+
+    session_id: when set, document is scoped to that chat session.
+    Dedup is scoped to the same session (different sessions may have identical docs).
     """
     chash = parsed.content_hash
     cur = conn.cursor()
 
-    # Duplicate = same content AND same title. Same content with a different
-    # title is treated as a distinct source (e.g. two files with the same text).
-    cur.execute(
-        "SELECT id FROM documents WHERE content_hash = %s AND title = %s",
-        (chash, parsed.title),
-    )
+    # Duplicate = same content AND same title, within the same session scope.
+    if session_id is not None:
+        cur.execute(
+            "SELECT id FROM documents WHERE content_hash = %s AND title = %s AND session_id = %s",
+            (chash, parsed.title, session_id),
+        )
+    else:
+        cur.execute(
+            "SELECT id FROM documents WHERE content_hash = %s AND title = %s AND session_id IS NULL",
+            (chash, parsed.title),
+        )
     if cur.fetchone():
         return None  # exact duplicate — skip
 
@@ -152,12 +161,12 @@ def add_document(
     cur.execute(
         """
         INSERT INTO documents (id, "source", title, format, version,
-                               content_hash, language, synthetic, metadata)
-        VALUES (%s, %s, %s, %s, 1, %s, %s, %s, %s)
+                               content_hash, language, synthetic, metadata, session_id)
+        VALUES (%s, %s, %s, %s, 1, %s, %s, %s, %s, %s)
         """,
         (doc_id, parsed.source, parsed.title, parsed.format,
          chash, parsed.language, parsed.metadata.get("synthetic", False),
-         json.dumps(parsed.metadata)),
+         json.dumps(parsed.metadata), session_id),
     )
 
     for chunk in chunks:

@@ -18,7 +18,7 @@ import io
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field
 
 from app.api.auth import require_admin
@@ -50,6 +50,7 @@ class UploadRequest(BaseModel):
     format: str = Field("text", pattern=r"^(text|markdown|html|pdf|jsonl)$")
     language: str = Field("en", max_length=10)
     chunking_strategy: str = Field("sentence_window", pattern=r"^(sentence_window|fixed_token)$")
+    session_id: str | None = Field(None, max_length=100)
 
 
 class DocumentSummary(BaseModel):
@@ -89,7 +90,7 @@ def upload_document(body: UploadRequest) -> UploadResponse:
 
     try:
         with get_db() as conn:
-            doc_id = add_document(conn, parsed, chunks, dedupe)
+            doc_id = add_document(conn, parsed, chunks, dedupe, session_id=body.session_id)
             if doc_id is not None:
                 embed_new_chunks(conn, doc_id)
     except Exception as exc:
@@ -108,7 +109,10 @@ _MAX_FILE_BYTES = 52_428_800  # 50 MB
 
 
 @router.post("/upload", response_model=UploadResponse, dependencies=[Depends(require_admin)])
-async def upload_file(file: UploadFile = File(...)) -> UploadResponse:
+async def upload_file(
+    file: UploadFile = File(...),
+    session_id: str | None = Form(None),
+) -> UploadResponse:
     """Accept a file upload (PDF, DOCX, TXT, MD, HTML) and ingest it."""
     ext = Path(file.filename or "").suffix.lower()
     if ext not in _ALLOWED_EXTENSIONS:
@@ -169,7 +173,7 @@ async def upload_file(file: UploadFile = File(...)) -> UploadResponse:
 
     try:
         with get_db() as conn:
-            doc_id = add_document(conn, parsed, chunks, dedupe)
+            doc_id = add_document(conn, parsed, chunks, dedupe, session_id=session_id)
             if doc_id is not None:
                 embed_new_chunks(conn, doc_id)
     except Exception as exc:
