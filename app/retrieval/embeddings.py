@@ -1,16 +1,21 @@
 """
 Embedding interface — single entry point for turning text into vectors.
 
-Two backends, selected by the EMBEDDING_BACKEND env var:
+Three backends, selected by the EMBEDDING_BACKEND env var:
 
-  "local" (default) — fastembed ONNX runtime, no network calls.
-                       Use for local development and scripts.
+  "local"   — fastembed ONNX runtime, no network calls.
+               Use for local development. Requires: pip install fastembed
 
-  "hf_api"          — HuggingFace Inference API, no local model loaded.
-                       Use for production on memory-constrained hosts
-                       (e.g. Render free tier 512 MB). Requires HF_TOKEN
-                       env var for rate-limit headroom; works without it
-                       but may be throttled.
+  "hf_api"  — HuggingFace Inference API.
+               Requires HF_TOKEN env var. May fail if HF is unreachable.
+
+  "gemini"  — Google Gemini text-embedding-004, output_dimensionality=384.
+               Requires GEMINI_API_KEY. Recommended for Render production.
+
+Auto-selection order when EMBEDDING_BACKEND is not set:
+  1. Try local (fastembed). If not installed →
+  2. Try gemini (if GEMINI_API_KEY set). Else →
+  3. Fall back to hf_api.
 """
 
 from __future__ import annotations
@@ -31,6 +36,11 @@ _model: "TextEmbedding | None" = None
 _HF_API_URL = (
     "https://api-inference.huggingface.co/pipeline/feature-extraction/{model}"
 )
+_GEMINI_BATCH_URL = (
+    "https://generativelanguage.googleapis.com/v1beta"
+    "/models/text-embedding-004:batchEmbedContents?key={api_key}"
+)
+_GEMINI_OUTPUT_DIM = 384  # must match EMBEDDING_DIM and the pgvector column size
 
 
 def _backend() -> str:
@@ -39,7 +49,8 @@ def _backend() -> str:
         try:
             import fastembed  # noqa: F401
         except ImportError:
-            return "hf_api"
+            # fastembed not installed — prefer gemini if key is available
+            return "gemini" if os.getenv("GEMINI_API_KEY") else "hf_api"
     return backend
 
 
@@ -88,10 +99,46 @@ def _encode_hf_api(texts: list[str]) -> list[list[float]]:
         raise EmbeddingError("HF API embedding timed out") from exc
 
     data: list = resp.json()
-    # API returns list[list[float]] for batch; list[float] for single input
     if data and isinstance(data[0], float):
         data = [data]
     return data
+
+
+# ── Gemini backend ─────────────────────────────────────────────────────────────
+
+def _encode_gemini(texts: list[str]) -> list[list[float]]:
+    """
+    Embed texts using Google Gemini text-embedding-004.
+    output_dimensionality=384 matches the existing pgvector column size.
+    Batches all texts in a single API call.
+    """
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        raise EmbeddingError("GEMINI_API_KEY not set; cannot use gemini embedding backend")
+
+    url = _GEMINI_BATCH_URL.format(api_key=api_key)
+    payload = {
+        "requests": [
+            {
+                "model": "models/text-embedding-004",
+                "content": {"parts": [{"text": t}]},
+                "output_dimensionality": _GEMINI_OUTPUT_DIM,
+            }
+            for t in texts
+        ]
+    }
+
+    try:
+        resp = httpx.post(url, json=payload, timeout=60.0)
+        resp.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        raise EmbeddingError(
+            f"Gemini embedding API returned {exc.response.status_code}: {exc.response.text[:200]}"
+        ) from exc
+    except httpx.TimeoutException as exc:
+        raise EmbeddingError("Gemini embedding API timed out") from exc
+
+    return [item["values"] for item in resp.json()["embeddings"]]
 
 
 # ── public interface ───────────────────────────────────────────────────────────
@@ -106,7 +153,10 @@ def encode(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
     try:
-        if _backend() == "hf_api":
+        backend = _backend()
+        if backend == "gemini":
+            return _encode_gemini(texts)
+        if backend == "hf_api":
             return _encode_hf_api(texts)
         return _encode_local(texts)
     except EmbeddingError:
