@@ -91,6 +91,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Embed all un-vectorised chunks.")
     parser.add_argument("--batch", type=int, default=256,
                         help="Chunks per encode call (default 256)")
+    parser.add_argument("--sleep", type=float, default=5.0,
+                        help="Seconds to wait between batches to avoid rate limits (default 5)")
     parser.add_argument("--dry-run", action="store_true",
                         help="Count un-embedded chunks but do not write anything")
     args = parser.parse_args()
@@ -126,9 +128,14 @@ def main() -> None:
         try:
             vectors = encode(texts)
         except Exception as exc:
-            log.error("encode_failed", batch_start=chunk_ids[0], error=str(exc))
-            conn.close()
-            sys.exit(1)
+            log.warning("encode_failed_retrying", batch_start=chunk_ids[0], error=str(exc))
+            time.sleep(60.0)
+            try:
+                vectors = encode(texts)
+            except Exception as exc2:
+                log.error("encode_failed", batch_start=chunk_ids[0], error=str(exc2))
+                conn.close()
+                sys.exit(1)
 
         _write_embeddings(conn, list(zip(chunk_ids, vectors)))
         conn.commit()
@@ -137,6 +144,9 @@ def main() -> None:
         elapsed = time.time() - t0
         rate = total / elapsed if elapsed > 0 else 0
         log.info("progress", embedded=total, rate=f"{rate:.1f} chunks/s")
+
+        if args.sleep > 0:
+            time.sleep(args.sleep)
 
     conn.close()
     elapsed = time.time() - t0

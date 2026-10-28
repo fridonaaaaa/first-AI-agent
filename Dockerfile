@@ -4,7 +4,7 @@ RUN useradd --create-home appuser
 WORKDIR /home/appuser/app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev gcc curl \
+    libpq-dev gcc curl libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml .

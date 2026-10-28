@@ -9,7 +9,7 @@ Three backends, selected by the EMBEDDING_BACKEND env var:
   "hf_api"  — HuggingFace Inference API.
                Requires HF_TOKEN env var. May fail if HF is unreachable.
 
-  "gemini"  — Google Gemini text-embedding-004, output_dimensionality=384.
+  "gemini"  — Google Gemini gemini-embedding-001, outputDimensionality=384.
                Requires GEMINI_API_KEY. Recommended for Render production.
 
 Auto-selection order when EMBEDDING_BACKEND is not set:
@@ -21,6 +21,7 @@ Auto-selection order when EMBEDDING_BACKEND is not set:
 from __future__ import annotations
 
 import os
+import time
 from typing import TYPE_CHECKING
 
 import httpx
@@ -36,9 +37,10 @@ _model: "TextEmbedding | None" = None
 _HF_API_URL = (
     "https://api-inference.huggingface.co/pipeline/feature-extraction/{model}"
 )
+_GEMINI_MODEL = "gemini-embedding-001"
 _GEMINI_BATCH_URL = (
     "https://generativelanguage.googleapis.com/v1beta"
-    "/models/text-embedding-004:batchEmbedContents?key={api_key}"
+    f"/models/{_GEMINI_MODEL}:batchEmbedContents?key={{api_key}}"
 )
 _GEMINI_OUTPUT_DIM = 384  # must match EMBEDDING_DIM and the pgvector column size
 
@@ -50,7 +52,8 @@ def _backend() -> str:
             import fastembed  # noqa: F401
         except ImportError:
             # fastembed not installed — prefer gemini if key is available
-            return "gemini" if os.getenv("GEMINI_API_KEY") else "hf_api"
+            has_key = get_settings().gemini_api_key or os.getenv("GEMINI_API_KEY")
+            return "gemini" if has_key else "hf_api"
     return backend
 
 
@@ -108,11 +111,11 @@ def _encode_hf_api(texts: list[str]) -> list[list[float]]:
 
 def _encode_gemini(texts: list[str]) -> list[list[float]]:
     """
-    Embed texts using Google Gemini text-embedding-004.
-    output_dimensionality=384 matches the existing pgvector column size.
+    Embed texts using Google Gemini gemini-embedding-001.
+    outputDimensionality=384 matches the existing pgvector column size.
     Batches all texts in a single API call.
     """
-    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    api_key = (get_settings().gemini_api_key or os.getenv("GEMINI_API_KEY", "")).strip()
     if not api_key:
         raise EmbeddingError("GEMINI_API_KEY not set; cannot use gemini embedding backend")
 
@@ -120,25 +123,32 @@ def _encode_gemini(texts: list[str]) -> list[list[float]]:
     payload = {
         "requests": [
             {
-                "model": "models/text-embedding-004",
+                "model": f"models/{_GEMINI_MODEL}",
                 "content": {"parts": [{"text": t}]},
-                "output_dimensionality": _GEMINI_OUTPUT_DIM,
+                "outputDimensionality": _GEMINI_OUTPUT_DIM,
             }
             for t in texts
         ]
     }
 
-    try:
-        resp = httpx.post(url, json=payload, timeout=60.0)
-        resp.raise_for_status()
-    except httpx.HTTPStatusError as exc:
-        raise EmbeddingError(
-            f"Gemini embedding API returned {exc.response.status_code}: {exc.response.text[:200]}"
-        ) from exc
-    except httpx.TimeoutException as exc:
-        raise EmbeddingError("Gemini embedding API timed out") from exc
+    for attempt in range(5):
+        try:
+            resp = httpx.post(url, json=payload, timeout=60.0)
+        except httpx.TimeoutException as exc:
+            raise EmbeddingError("Gemini embedding API timed out") from exc
 
-    return [item["values"] for item in resp.json()["embeddings"]]
+        if resp.status_code == 429:
+            time.sleep(10.0)
+            continue
+        try:
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            raise EmbeddingError(
+                f"Gemini embedding API returned {exc.response.status_code}: {exc.response.text[:200]}"
+            ) from exc
+        return [item["values"] for item in resp.json()["embeddings"]]
+
+    raise EmbeddingError("Gemini embedding API rate limit exceeded after retries")
 
 
 # ── public interface ───────────────────────────────────────────────────────────
