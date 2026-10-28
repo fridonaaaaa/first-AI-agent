@@ -52,6 +52,7 @@ class AskResponse(BaseModel):
     sub_queries: list[str]
     steps_used: int
     abstained: bool
+    retrieval_mode: str = "hybrid_rerank"  # "bm25_only" when embedding model mismatch
 
 
 @router.post("/ask", response_model=AskResponse)
@@ -107,4 +108,5 @@ async def ask(request: Request, body: AskRequest) -> AskResponse:
         sub_queries=result.sub_queries,
         steps_used=result.steps_used,
         abstained=bool(result.abstention and result.abstention.should_abstain),
+        retrieval_mode=result.retrieval_mode,
     )

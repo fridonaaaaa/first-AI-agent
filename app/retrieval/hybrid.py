@@ -19,12 +19,15 @@ import psycopg2
 
 from app.core.db import get_db
 from app.core.errors import DatabaseError
+from app.core.logging import get_logger
 from app.core.settings import get_settings
 from app.retrieval.bm25 import BM25Searcher
-from app.retrieval.embeddings import encode_one
+from app.retrieval.embeddings import encode_one, get_stored_model_name
 from app.retrieval.fusion import reciprocal_rank_fusion
 from app.retrieval.rerank import CandidateChunk, coverage_rerank
 from app.retrieval.vector_store import search_dense
+
+log = get_logger("hybrid")
 
 # How many candidates to fetch from each retriever before fusing.
 # Larger → better recall at the cost of more BM25 DB rows fetched.
@@ -79,11 +82,26 @@ def hybrid_search(
     settings = get_settings()
 
     def _run(c: "psycopg2.extensions.connection") -> list[CandidateChunk]:
-        # 1. Dense search
-        query_vec = encode_one(query)
-        dense_results = search_dense(
-            query_vec, top_k=_CANDIDATE_POOL, conn=c, doc_id=doc_id, session_id=session_id
-        )
+        # Guard: skip dense search if the stored embedding model doesn't match the
+        # active model — searching across different vector spaces returns garbage.
+        stored_model = get_stored_model_name(c)
+        active_model = settings.embedding_model
+        use_dense = not (stored_model and stored_model != active_model)
+        if not use_dense:
+            log.warning(
+                "embedding_model_mismatch",
+                stored=stored_model,
+                active=active_model,
+                fallback="bm25_only",
+            )
+
+        # 1. Dense search (skipped when embedding models don't match)
+        dense_results: list[tuple[str, float]] = []
+        if use_dense:
+            query_vec = encode_one(query)
+            dense_results = search_dense(
+                query_vec, top_k=_CANDIDATE_POOL, conn=c, doc_id=doc_id, session_id=session_id
+            )
 
         # 2. BM25 search
         bm25 = BM25Searcher(conn=c, k1=settings.bm25_k1, b=settings.bm25_b)

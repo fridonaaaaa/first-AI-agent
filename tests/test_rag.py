@@ -264,6 +264,30 @@ def test_pipeline_georgian_query():
     assert result.language == "georgian"
 
 
+def test_pipeline_retrieval_mode_bm25_only():
+    """When stored model ≠ active model, PipelineResult.retrieval_mode is 'bm25_only'."""
+    from unittest.mock import patch as _patch
+    from app.retrieval.embeddings import get_stored_model_name as _gsm
+
+    llm = MockLLMClient(
+        responses={
+            "sufficient": '{"sufficient": true}',
+            "Passages": "Bell invented it. [c1]",
+        },
+        fallback='{"sub_queries": ["q"]}',
+    )
+
+    def _stored_mismatch(conn):
+        return "some-other-model/v1"
+
+    with _patch("app.rag.pipeline.hybrid_search", side_effect=_mock_hybrid), \
+         _patch("app.rag.pipeline.get_stored_model_name", side_effect=_stored_mismatch), \
+         _patch("app.rag.pipeline.get_db"):
+        result = run_pipeline("who invented telephone", llm)
+
+    assert result.retrieval_mode == "bm25_only"
+
+
 def test_pipeline_strips_hallucinated_citations():
     llm = MockLLMClient(
         responses={

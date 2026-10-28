@@ -25,12 +25,14 @@ from dataclasses import dataclass, field
 
 import psycopg2
 
+from app.core.db import get_db
 from app.core.settings import get_settings
 from app.rag.abstention import AbstentionDecision, check_abstention
 from app.rag.citation import CitationResult, verify_citations
 from app.rag.conflict import ConflictVerdict, detect_conflicts
 from app.rag.llm.base import LLMClient
 from app.rag.query_understanding import understand_query
+from app.retrieval.embeddings import get_stored_model_name
 from app.retrieval.hybrid import hybrid_search
 from app.retrieval.rerank import CandidateChunk
 
@@ -61,6 +63,7 @@ class PipelineResult:
     abstention: AbstentionDecision | None
     citation_check: CitationResult | None
     steps_used: int
+    retrieval_mode: str = "hybrid_rerank"  # "bm25_only" when embedding model mismatch
 
 
 def _format_context(chunks: list[CandidateChunk]) -> str:
@@ -108,6 +111,21 @@ def run_pipeline(
     max_steps = max_tool_steps or settings.max_tool_steps
     is_georgian = any(ord(c) > 0x10CF for c in raw_query)
 
+    # Check if dense search is usable (stored model must match the active model).
+    def _check_mode(c: "psycopg2.extensions.connection") -> str:
+        stored = get_stored_model_name(c)
+        return "bm25_only" if (stored and stored != settings.embedding_model) else "hybrid_rerank"
+
+    retrieval_mode = "hybrid_rerank"
+    try:
+        if conn is not None:
+            retrieval_mode = _check_mode(conn)
+        else:
+            with get_db() as _c:
+                retrieval_mode = _check_mode(_c)
+    except Exception:
+        pass  # Optimistic: assume hybrid; hybrid_search handles the fallback itself.
+
     def _abstain_result(reason: str) -> PipelineResult:
         msg = (
             "ვერ ვიპოვე საკმარისი მტკიცებულება ამ კითხვაზე პასუხის გასაცემად."
@@ -124,6 +142,7 @@ def run_pipeline(
             abstention=AbstentionDecision(should_abstain=True, reason=reason, top_score=0.0),
             citation_check=None,
             steps_used=0,
+            retrieval_mode=retrieval_mode,
         )
 
     # 1. Initial search with the raw query — used for both early-exit and as
@@ -186,6 +205,7 @@ def run_pipeline(
             abstention=abstention,
             citation_check=None,
             steps_used=steps,
+            retrieval_mode=retrieval_mode,
         )
 
     # 4. Conflict detection
@@ -219,4 +239,5 @@ def run_pipeline(
         abstention=abstention,
         citation_check=citation_result,
         steps_used=steps,
+        retrieval_mode=retrieval_mode,
     )

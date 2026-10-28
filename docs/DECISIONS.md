@@ -260,3 +260,29 @@ test split (not available in the distractor subset downloaded locally).
 
 **Changed by owner:**
 
+
+---
+
+## 2026-10-28 — Embedding model mismatch guard (Step 2)
+
+**Decision:** Added `get_stored_model_name(conn)` to `embeddings.py` that reads
+`bm25_corpus.embedding_model`. In `hybrid_search._run()`, if the stored model name
+differs from `settings.embedding_model`, dense search is skipped entirely and
+BM25-only retrieval is used (with a `log.warning("embedding_model_mismatch")`).
+`PipelineResult.retrieval_mode` and `AskResponse.retrieval_mode` expose `"bm25_only"`
+or `"hybrid_rerank"` to callers.
+
+**Why:** Searching with a different embedding model than was used to index the corpus
+produces meaningless cosine distances. Silent failure is worse than degraded BM25-only
+performance, because the pipeline would silently return low-quality results.
+
+**Alternatives rejected:**
+- Raise an exception at query time — too disruptive; BM25-only is a usable fallback.
+- Check only at startup — a running server might have its env changed between
+  embed jobs; query-time check catches this correctly.
+- Add a `skip_dense` parameter to `hybrid_search` — cleaner separation, but
+  requires two DB round-trips (one in pipeline, one in hybrid). The single check
+  inside `_run()` is cheaper; `run_pipeline` reads `retrieval_mode` from a
+  lightweight dedicated check that is caught on exception.
+
+**Changed by owner:**

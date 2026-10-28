@@ -24,13 +24,14 @@ import os
 import time
 from typing import TYPE_CHECKING
 
+if TYPE_CHECKING:
+    import psycopg2
+    from fastembed import TextEmbedding
+
 import httpx
 
 from app.core.errors import EmbeddingError
 from app.core.settings import get_settings
-
-if TYPE_CHECKING:
-    from fastembed import TextEmbedding
 
 _model: "TextEmbedding | None" = None
 
@@ -178,3 +179,19 @@ def encode(texts: list[str]) -> list[list[float]]:
 def encode_one(text: str) -> list[float]:
     """Encode a single string. Convenience wrapper around encode()."""
     return encode([text])[0]
+
+
+def get_stored_model_name(conn: "psycopg2.extensions.connection") -> str | None:
+    """
+    Read the embedding model name that was used when the corpus was indexed.
+
+    Returns None if bm25_corpus has no record yet (e.g. before the first embed job).
+    Any DB error is swallowed and returns None so callers can decide how to handle it.
+    """
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT embedding_model FROM bm25_corpus WHERE id = 1")
+            row = cur.fetchone()
+        return row[0] if row and row[0] else None
+    except Exception:
+        return None

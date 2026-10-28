@@ -191,3 +191,21 @@ Changed by owner:
 
 Changed by owner:
 
+
+---
+
+## Session 2026-10-28 (continued) — Step 2: embedding model mismatch guard
+
+Generated:
+- `app/retrieval/embeddings.py`: added `get_stored_model_name(conn)` function
+- `app/retrieval/hybrid.py`: added model mismatch check in `_run()` with BM25-only fallback;
+  imported `get_logger`, `get_stored_model_name`
+- `app/rag/pipeline.py`: added `retrieval_mode` field to `PipelineResult`; added
+  `_check_mode()` helper; imported `get_db`, `get_stored_model_name`
+- `app/api/routes/ask.py`: added `retrieval_mode` field to `AskResponse`
+- `tests/test_embeddings.py`: 3 new tests for `get_stored_model_name`
+- `tests/test_rag.py`: 1 new test `test_pipeline_retrieval_mode_bm25_only`
+- `docs/STATUS.md`: updated (134 tests, Step 2 done, next steps listed)
+- `docs/DECISIONS.md`: appended mismatch guard decision
+
+Changed by owner:

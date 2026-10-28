@@ -67,6 +67,38 @@ def test_encode_raises_embedding_error_on_failure():
             mod.encode_one("boom")
 
 
+def _mock_conn(row):
+    """Return a minimal mock psycopg2 connection that returns `row` from fetchone."""
+    from unittest.mock import MagicMock
+    cur = MagicMock()
+    cur.__enter__ = lambda s: s
+    cur.__exit__ = MagicMock(return_value=False)
+    cur.fetchone.return_value = row
+    conn = MagicMock()
+    conn.cursor.return_value = cur
+    return conn
+
+
+def test_get_stored_model_name_returns_name():
+    from app.retrieval.embeddings import get_stored_model_name
+    conn = _mock_conn(("sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",))
+    assert get_stored_model_name(conn) == "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
+
+def test_get_stored_model_name_empty_row():
+    from app.retrieval.embeddings import get_stored_model_name
+    conn = _mock_conn(None)
+    assert get_stored_model_name(conn) is None
+
+
+def test_get_stored_model_name_db_error():
+    from unittest.mock import MagicMock
+    from app.retrieval.embeddings import get_stored_model_name
+    conn = MagicMock()
+    conn.cursor.side_effect = RuntimeError("db down")
+    assert get_stored_model_name(conn) is None
+
+
 def test_model_loaded_once():
     """Lazy singleton: TextEmbedding constructor is called once, not twice."""
     import sys

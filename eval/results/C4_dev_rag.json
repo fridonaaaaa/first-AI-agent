@@ -1,0 +1,716 @@
+{
+  "config": {
+    "config_id": "C4",
+    "name": "full_pipeline",
+    "description": "Full pipeline: hybrid + reranker + query decomposition + tool loop",
+    "retrieval_mode": "hybrid_rerank",
+    "retrieval_top_k": 10,
+    "rrf_k": 60,
+    "bm25_k1": 1.5,
+    "bm25_b": 0.75,
+    "lambda_rerank": 0.5,
+    "use_reranker": true,
+    "use_decomposition": true
+  },
+  "split": "dev",
+  "elapsed": 6307.1,
+  "answer_f1": 0.0607,
+  "exact_match": 0.0,
+  "citation_precision": 0.875,
+  "abstention_accuracy": 0.775,
+  "n": 40,
+  "per_question": [
+    {
+      "id": "dev-001",
+      "category": "bridge",
+      "language": "en",
+      "question": "North Blenheim, New York was destroyed by flooding caused by the Hurricane that landed in what month?",
+      "gold": "August 2011",
+      "answer": "Sources disagree:\n• North Blenheim was destroyed by flooding caused by Hurricane Irene in 2011 [f413427f-6451-439f-883b-c760e6a9e386].\n• North Blenheim was destroyed by flooding caused by Tropical Storm Irene on August 29, 2011 [63cdce92-4bbf-4c5a-ac3a-195b84b750a6].\n\nI cannot determine which is correct — please decide which source you trust.",
+      "abstained": false,
+      "f1": 0.0833,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "When did Hurricane Irene hit North Blenheim New York?",
+        "impact of Hurricane Irene on North Blenheim New York",
+        "month of Hurricane Irene"
+      ],
+      "elapsed_s": 165.52
+    },
+    {
+      "id": "dev-002",
+      "category": "bridge",
+      "language": "en",
+      "question": "What type of coat coloration do Colorpoint Shorthairs and Siamese share?",
+      "gold": "Point coloration",
+      "answer": "Colorpoint Shorthairs and Siamese share the point-coloration pattern [df51eaa0-bf25-4f5c-8927-5678c0870654, 9354f54c-7c8a-4347-a339-010ea6a9c457, a4885c5d-c802-4401-a136-0363844af092]. This pattern is characterized by a pale body with relatively darker extremities, such as the face, ears, feet, and tail [577eaf25-810c-4064-8576-2f59dc83386d].",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "Colorpoint Shorthair coat pattern characteristics",
+        "Siamese cat coat pattern characteristics",
+        "genetic relationship between Colorpoint Shorthair and Siamese cats"
+      ],
+      "elapsed_s": 25.61
+    },
+    {
+      "id": "dev-003",
+      "category": "bridge",
+      "language": "en",
+      "question": "What time did a Fox News show formally hosted by the author of \"The Swamp: Washington's Murky Pool of Corruption and Cronyism and How Trump Can Drain It\" air?",
+      "gold": "Saturdays at 11:30 am ET",
+      "answer": "The author of \"The Swamp: Washington's Murky Pool of Corruption and Cronyism and How Trump Can Drain It\" is Eric Bolling [99208a4e-90a0-44bf-8de5-7a328ffe7d70]. The Fox News show \"Cashin' In,\" which Bolling hosted, airs on Saturdays at 11:30 am ET [4e13b4a8-0363-4664-8223-781766248964].",
+      "abstained": false,
+      "f1": 0.2273,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "Eric Bolling Fox News show name",
+        "What time did Eric Bolling's show air on Fox News"
+      ],
+      "elapsed_s": 65.44
+    },
+    {
+      "id": "dev-004",
+      "category": "bridge",
+      "language": "en",
+      "question": "What election was Senator Harry Reid at in Nevada?",
+      "gold": "The 2016 United States Senate election",
+      "answer": "Sources disagree:\n• Harry Reid won re-election to a third term in the 1998 United States Senate election in Nevada [44586faf-a7f7-4170-bee3-ac145763644a].\n• Harry Reid won re-election to a second term in the 1992 United States Senate election in Nevada [2a11c9da-c4c6-41cf-9982-717039a18420], [d8c4f069-5891-438d-b877-6e803f034754].\n• Harry Reid was in the 2010 Senate race in Nevada against Sharon Angle [1d09171a-9b8c-48c6-a5f9-f26f6717c73c].\n\nI cannot determine which is correct — please decide which source you trust.",
+      "abstained": false,
+      "f1": 0.1333,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "Harry Reid Nevada Senate election history",
+        "list of years Harry Reid was elected to the US Senate",
+        "Harry Reid election results Nevada Senate"
+      ],
+      "elapsed_s": 80.99
+    },
+    {
+      "id": "dev-005",
+      "category": "bridge",
+      "language": "en",
+      "question": "Which former president of the Fédération Internationale de l'Automobile (FIA) cofounded Simtek Research?",
+      "gold": "Max Rufus Mosley",
+      "answer": "Max Mosley is the former president of the Fédération Internationale de l'Automobile (FIA) who cofounded Simtek Research [3d672263-792c-496e-bd6f-70e839c62f05, 8bc18739-3799-45b3-adaf-8792c52e8257].",
+      "abstained": false,
+      "f1": 0.1818,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "Who co-founded Simtek Research?",
+        "Was Max Mosley a co-founder of Simtek Research?",
+        "When was Max Mosley FIA president?"
+      ],
+      "elapsed_s": 64.09
+    },
+    {
+      "id": "dev-006",
+      "category": "bridge",
+      "language": "en",
+      "question": " The Human Condition is a film trilogy that follows a Japanese pacifist and socialist as he tries to survive in a political system that strives to regulate what?",
+      "gold": "every aspect of public and private life",
+      "answer": "The trilogy follows the protagonist as he tries to survive in the totalitarian and oppressive world of World War II-era Japan [9d04a5aa-3c38-4725-9599-600415d160ba, 04efca7e-4e59-4cdd-8fde-8542c2381515]. Totalitarianism is a political system that strives to regulate every aspect of public and private life [0a6d9c6a-e37a-40b2-9319-bdbe1a69d147].\n\nSources disagree:\n• The novel was published from 1956 to 1958 [9d04a5aa-3c38-4725-9599-600415d160ba].\n• The novel was published in 1958 [f3164224-8275-48f8-9fc5-06982d08b2a2, a9952bf4-8038-4ff6-9ce7-47dd14b82405, 93aa33ec-0401-471f-90a3-b1bf1127b720, 626ac7ac-fd39-4c2a-8b06-0f77ebb04015, f8d9a804-a98b-42ad-8663-907e7964e2f4].\nI cannot determine which is correct — please decide which source you trust.",
+      "abstained": false,
+      "f1": 0.1667,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "The Human Condition film trilogy plot summary",
+        "political themes in The Human Condition trilogy",
+        "The Human Condition film trilogy critique of Japanese imperialism and bureaucracy"
+      ],
+      "elapsed_s": 71.8
+    },
+    {
+      "id": "dev-007",
+      "category": "bridge",
+      "language": "en",
+      "question": "Name a movie that David Thewlis has performed in after the premiere of Fargo?",
+      "gold": "Anomalisa",
+      "answer": "David Thewlis performed in the film \"Anomalisa,\" which was released in 2015 [eb5de510-1fa8-420b-bd81-294133829dfd]. The television series \"Fargo,\" in which Thewlis appeared, premiered on April 15, 2014 [b3a4a635-cc3f-4200-8f5c-497a543fff6b, ea94e90b-3695-4394-80e5-a4dce53c0426].",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "David Thewlis filmography",
+        "movies featuring David Thewlis released after 2017"
+      ],
+      "elapsed_s": 113.65
+    },
+    {
+      "id": "dev-008",
+      "category": "bridge",
+      "language": "en",
+      "question": "What production company was co-created by the lead singer of the band Poison?",
+      "gold": "Sheen Michaels Entertainment",
+      "answer": "The production company co-created by Bret Michaels, the lead singer of the band Poison, is Sheen Michaels Entertainment [82e98ad8-53c3-497f-ad93-855ecab48e6c, 80fb4043-c93b-41f9-bcf8-1f6411a6bf79].",
+      "abstained": false,
+      "f1": 0.2609,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "Bret Michaels production company name",
+        "who co-founded Bret Michaels Entertainment"
+      ],
+      "elapsed_s": 111.92
+    },
+    {
+      "id": "dev-009",
+      "category": "bridge",
+      "language": "en",
+      "question": "How many Major League Baseball teams usually attend the meeting where the John H. Johnson President's Award is awarded?",
+      "gold": "30 Major League Baseball teams",
+      "answer": "The John H. Johnson President's Award is usually awarded during the Winter Meetings [93bdc382-69e7-4c48-832f-8237346443c6]. Representatives of all 30 Major League Baseball teams attend the Winter Meetings [1be8d3fe-8867-4a6e-9494-e8ac71e2c023].",
+      "abstained": false,
+      "f1": 0.3125,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "what is the John H. Johnson President's Award in Minor League Baseball",
+        "who attends the Baseball Winter Meetings John H. Johnson President's Award ceremony",
+        "number of MLB teams represented at the Baseball Winter Meetings"
+      ],
+      "elapsed_s": 130.15
+    },
+    {
+      "id": "dev-010",
+      "category": "bridge",
+      "language": "en",
+      "question": "John Alexander and Trent Alexander-Arnold are professional footballers from which country?",
+      "gold": "England",
+      "answer": "John Alexander and Trent Alexander-Arnold are both English [1851f765-e62c-4912-8f7a-c493eaf72b41, b2b3cc4d-88b5-4837-9455-f73beb39e18a].",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "what is the nationality of John Alexander footballer",
+        "what is the nationality of Trent Alexander-Arnold"
+      ],
+      "elapsed_s": 59.65
+    },
+    {
+      "id": "dev-011",
+      "category": "bridge",
+      "language": "en",
+      "question": "What singer who sang in church during her childhood did Stacy Barthe pen album tracks for?",
+      "gold": "Katy Perry",
+      "answer": "Stacy Barthe penned album tracks for Katy Perry [8eabfaad-03f8-4f65-8f5e-73ce9dab83b1], who sang in church during her childhood [36c53938-c039-4267-a27b-88818bfc8541].",
+      "abstained": false,
+      "f1": 0.2105,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "Stacy Barthe songwriter credits",
+        "singers who started in church"
+      ],
+      "elapsed_s": 112.99
+    },
+    {
+      "id": "dev-012",
+      "category": "bridge",
+      "language": "en",
+      "question": "Who was the leading actor of the Christmas movie that Rebecca Forstadt did background voices for?",
+      "gold": "Tim Allen",
+      "answer": "The provided passages do not contain information about a Christmas movie that Rebecca Forstadt did background voices for.",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "movies featuring Rebecca Forstadt voice acting",
+        "Christmas movies with Rebecca Forstadt",
+        "leading actor of the Christmas movie featuring Rebecca Forstadt"
+      ],
+      "elapsed_s": 61.25
+    },
+    {
+      "id": "dev-013",
+      "category": "bridge",
+      "language": "en",
+      "question": "What song originally released by an American rock band active in the late 1960's and early 1970's did The Reels do a cover of in 1986?",
+      "gold": "\"Bad Moon Rising\"",
+      "answer": "The provided passages do not contain information regarding a song covered by The Reels in 1986 that was originally released by an American rock band active in the late 1960s and early 1970s. While passage [8f48157a-27ba-4271-9e3b-c9ec4180c364] identifies Creedence Clearwater Revival as an American rock band active in that period, and passage [d1c6df9f-adfc-4907-aba4-82c7862e896f] mentions The Reels' history of covering songs, no passage links these two entities or mentions a 1986 cover.",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "The Reels 1986 cover song",
+        "original artist of the song covered by The Reels in 1986",
+        "was the original artist of the song covered by The Reels an American rock band from the 1960s or 1970s"
+      ],
+      "elapsed_s": 175.52
+    },
+    {
+      "id": "dev-014",
+      "category": "bridge",
+      "language": "en",
+      "question": "What electronic attack squadron is permanently stationed on two pieces of land near Oak Harbor?",
+      "gold": "Black Ravens",
+      "answer": "The provided passages do not contain information about an electronic attack squadron permanently stationed on two pieces of land near Oak Harbor. While several electronic attack squadrons are stationed at Naval Air Station Whidbey Island, which is located in Washington [bd9ce7ad-c449-4300-9227-27fc29722086, 4e3ee1a6-7c5f-49d5-876d-029c52409374, 40db6825-d3c6-4d11-9160-8de09450e1e5, b3b01599-56d6-4cc2-8805-4b7e04327e1c, cb45b464-d04e-4172-8ba1-8e05a2726b7b, 4da66615-6e86-4190-b4d3-03bf95c1ef14, 867ddbf3-c36c-4916-967f-72b4d5200e16], none of the sources describe the station as being on \"two pieces of land.\"",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "VAQ electronic attack squadrons based at NAS Whidbey Island",
+        "List of permanently stationed VAQ squadrons at NAS Whidbey Island"
+      ],
+      "elapsed_s": 65.15
+    },
+    {
+      "id": "dev-015",
+      "category": "bridge",
+      "language": "en",
+      "question": "Stockely Webster has paintings hanging in what home (that serves as the residence for the Mayor of New York)?",
+      "gold": "Gracie Mansion",
+      "answer": "Stokely Webster's paintings can be found at Gracie Mansion [27697b8a-33a8-4696-921a-907954965f68], which serves as the residence of the Mayor of New York City [aca69b37-132a-4cbb-bc65-0c7c57fe0a51, ca7df90d-e7f2-4a43-a2f4-54395a211a93].",
+      "abstained": false,
+      "f1": 0.1538,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "Stockely Webster paintings in Gracie Mansion",
+        "Is there a Stockely Webster painting in the New York City Mayor's residence?"
+      ],
+      "elapsed_s": 42.18
+    },
+    {
+      "id": "dev-016",
+      "category": "bridge",
+      "language": "en",
+      "question": "Which of the seven Disney characters who had been given a series of their own, starring in cartoons who opened with their own logo  is a fictional character who first appeared in Disney's \"Pinocchio\"?",
+      "gold": "Figaro",
+      "answer": "The Disney character who had been given a series of their own and first appeared in Disney's \"Pinocchio\" is Figaro [8aa97785-ab2f-4601-b123-1b1927d3ac49, 93d706f0-bbee-418b-b862-7bd234b53ddd].",
+      "abstained": false,
+      "f1": 0.087,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "Disney character first appearing in Pinocchio",
+        "Did Jiminy Cricket have his own cartoon series?",
+        "What is the logo associated with Jiminy Cricket?"
+      ],
+      "elapsed_s": 119.97
+    },
+    {
+      "id": "dev-017",
+      "category": "bridge",
+      "language": "en",
+      "question": " Om and SIx Organs of Admittance are both what?",
+      "gold": "heavy metal band",
+      "answer": "Om and Six Organs of Admittance are both bands [836bf11a-8546-4ba9-8d6b-cecb4d247e29].",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "Om band musical genre and style",
+        "Six Organs of Admittance musical genre and style"
+      ],
+      "elapsed_s": 142.87
+    },
+    {
+      "id": "dev-018",
+      "category": "bridge",
+      "language": "en",
+      "question": "In what type of imprisonment where the inmates Arne Berge helped rescue during operation White Buses?",
+      "gold": "concentration camp",
+      "answer": "The inmates Arne Berge helped rescue during the White Buses operation were held in concentration camps [678dd67a-9be8-414a-9608-55c66d910ee9].",
+      "abstained": false,
+      "f1": 0.1053,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "Arne Berge White Buses operation",
+        "What was the White Buses operation rescue mission?",
+        "What type of imprisonment did White Buses rescuees experience?"
+      ],
+      "elapsed_s": 130.66
+    },
+    {
+      "id": "dev-019",
+      "category": "bridge",
+      "language": "en",
+      "question": "Is the school where Aaron Parrett currently teaches English Literature public or private?",
+      "gold": "private",
+      "answer": "The provided passages do not state whether the University of Providence, where Aaron Parrett teaches [d1e6039b-708c-40f5-bb96-dbb62199af86], is a public or private institution.",
+      "abstained": false,
+      "f1": 0.087,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "Aaron Parrett English Literature teaching position",
+        "Is Aaron Parrett a professor at a public or private university?"
+      ],
+      "elapsed_s": 49.35
+    },
+    {
+      "id": "dev-020",
+      "category": "bridge",
+      "language": "en",
+      "question": "Who is Cletis Tout? was a comedy film that starred which \"Home Improvement\" cast member?",
+      "gold": "Timothy Allen Dick",
+      "answer": "*Who Is Cletis Tout?* is a 2001 American-Canadian action comedy film about mistaken identity and a hidden stash of diamonds [a5f4d227-8d74-4a59-a8a7-2189cc999e8f]. It starred Tim Allen, who was a cast member of the television series *Home Improvement* [a5f4d227-8d74-4a59-a8a7-2189cc999e8f, 3f2b6ba5-4c26-4671-a1c8-22edc195977c].",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "cast of the film The Movie Hero Cletis Tout",
+        "actors who appeared in both The Movie Hero Cletis Tout and Home Improvement"
+      ],
+      "elapsed_s": 123.19
+    },
+    {
+      "id": "dev-021",
+      "category": "comparison",
+      "language": "en",
+      "question": "Are both Parodia and Thalictrum flowering plants?",
+      "gold": "yes",
+      "answer": "Yes, both Parodia and Thalictrum are flowering plants. Parodia is a genus of flowering plants in the cactus family [d34bedf0-17cc-49a8-9cfa-3c78a5719482]. Thalictrum is a genus of herbaceous perennial flowering plants in the Ranunculaceae family [216acca1-2538-40ca-8bbf-2d9ba02f2cd7].",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "is the genus Parodia an angiosperm",
+        "is the genus Thalictrum an angiosperm"
+      ],
+      "elapsed_s": 54.69
+    },
+    {
+      "id": "dev-022",
+      "category": "comparison",
+      "language": "en",
+      "question": "Which came out first, Dinosaur or McFarland, USA",
+      "gold": "Dinosaur",
+      "answer": "Sources disagree:\n• The Good Dinosaur was released in 2015 [ab9d6fed-89d0-42ad-a632-1f62696c4aa4].\n• McFarland, USA was released in 2015 [5002ae2f-e2a8-4988-8865-fa516e6db511].\nI cannot determine which is correct — please decide which source you trust.",
+      "abstained": false,
+      "f1": 0.0606,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "release date of the movie Dinosaur",
+        "release date of the movie McFarland, USA"
+      ],
+      "elapsed_s": 112.4
+    },
+    {
+      "id": "dev-023",
+      "category": "comparison",
+      "language": "en",
+      "question": "Are Villa Paletti and Betrayal at House on the Hill both board games?",
+      "gold": "yes",
+      "answer": "Yes, both Villa Paletti and Betrayal at House on the Hill are board games. Villa Paletti is described as a board game of physical skill [bdb74ad2-90e9-4a76-877b-8c466c2b0068], and Betrayal at House on the Hill is identified as a board game [976aa489-7cd9-4523-ad00-1956c7e6a091, 92e4e178-b1ee-4ece-8717-a51bff29a6ea].",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "what type of board game is Villa Paletti",
+        "what type of board game is Betrayal at House on the Hill"
+      ],
+      "elapsed_s": 197.96
+    },
+    {
+      "id": "dev-024",
+      "category": "comparison",
+      "language": "en",
+      "question": "Which airport Grand Forks International Airport or El Paso International Airport is closer to their town ?",
+      "gold": "El Paso International Airport",
+      "answer": "The provided passages do not contain information regarding the distance between Grand Forks International Airport and its town. Therefore, I cannot answer the question.",
+      "abstained": false,
+      "f1": 0.1429,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "distance from Grand Forks International Airport to downtown Grand Forks",
+        "distance from El Paso International Airport to downtown El Paso"
+      ],
+      "elapsed_s": 180.4
+    },
+    {
+      "id": "dev-025",
+      "category": "comparison",
+      "language": "en",
+      "question": "Do the genuses Catopsis and Crataegus belong to the same family? ",
+      "gold": "no",
+      "answer": "The provided passages do not contain information regarding the family to which the genus *Crataegus* belongs, and therefore it cannot be determined if *Catopsis* and *Crataegus* belong to the same family. The provided text only identifies *Catopsis* as belonging to the family Bromeliaceae [702acdc9-2226-4412-ab2d-4be758683032].",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "what plant family does Catopsis belong to",
+        "what plant family does Crataegus belong to"
+      ],
+      "elapsed_s": 52.75
+    },
+    {
+      "id": "dev-026",
+      "category": "comparison",
+      "language": "en",
+      "question": "Which writer was ordained to priesthood, W. Somerset Maugham or Thomas Merton?",
+      "gold": "Thomas Merton",
+      "answer": "The provided passages do not contain information regarding whether W. Somerset Maugham or Thomas Merton were ordained to the priesthood.",
+      "abstained": false,
+      "f1": 0.1818,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "Was Thomas Merton ordained as a priest?",
+        "Was W. Somerset Maugham ordained as a priest?"
+      ],
+      "elapsed_s": 429.79
+    },
+    {
+      "id": "dev-027",
+      "category": "comparison",
+      "language": "en",
+      "question": "Are Black and New Found Glory from the same country?",
+      "gold": "no",
+      "answer": "The provided passages do not contain information confirming that \"Black\" is a country; rather, they refer to \"Black\" as a descriptor for ethnic groups or populations [6958eee0-f81f-4d1b-8a18-802e62ec1758, e9b920c7-912d-4da8-bc34-ae10eee0cc71] or in the context of the \"Black Country\" region in England [0ce168a0-4ea2-4bec-a183-ae8746895adf]. New Found Glory is identified as an American rock band [0c79ad89-dc9a-4e7d-a484-cb6fe146cc72, 82329524-5802-4515-8f8b-626515be2a31].",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "What country is the band Black from?",
+        "What country is the band New Found Glory from?"
+      ],
+      "elapsed_s": 190.54
+    },
+    {
+      "id": "dev-028",
+      "category": "comparison",
+      "language": "en",
+      "question": "Are University of Virginia and Massachusetts Institute of Technology in the same country?",
+      "gold": "yes",
+      "answer": "The provided passages do not contain information regarding the University of Virginia. Therefore, I cannot determine if it is in the same country as the Massachusetts Institute of Technology.",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "country location of University of Virginia",
+        "country location of Massachusetts Institute of Technology"
+      ],
+      "elapsed_s": 161.66
+    },
+    {
+      "id": "dev-029",
+      "category": "comparison",
+      "language": "en",
+      "question": "Are Tim Rice and Kathy Acker both from America?",
+      "gold": "no",
+      "answer": "The provided passages do not contain information regarding the nationality of Tim Rice. Kathy Acker is identified as an American writer [0e2ec1d2-a50c-4023-9769-d103278ba3f7].",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "Tim Rice nationality and birthplace",
+        "Kathy Acker nationality and birthplace"
+      ],
+      "elapsed_s": 110.32
+    },
+    {
+      "id": "dev-030",
+      "category": "comparison",
+      "language": "en",
+      "question": "Which opera has more acts, Parsifal or Manon by Massenet?",
+      "gold": "Parsifal",
+      "answer": "*Manon* by Massenet has more acts than *Parsifal*. *Manon* is an opera in five acts [f3ef9f8c-5c9d-4667-8681-288c6de7ce89], while *Parsifal* is an opera in three acts [5de0c368-f14b-43bd-96a8-642ea6895629].",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 1,
+      "sub_queries": [
+        "Which opera has more acts, Parsifal or Manon by Massenet?"
+      ],
+      "elapsed_s": 160.02
+    },
+    {
+      "id": "dev-031",
+      "category": "comparison",
+      "language": "en",
+      "question": "J. Searle Dawley and Ken Annakin were both directors of what?",
+      "gold": "Kenneth Cooper \"Ken\" Annakin, OBE (10 August 1914 – 22 April 2009) was a prolific English film director.",
+      "answer": "The provided passages do not contain information stating that J. Searle Dawley and Ken Annakin were both directors of the same thing. \n\nJ. Searle Dawley directed the film *Bab's Diary* [f56ec19b-d402-4b5b-a6fe-3bb3f8e17301]. Ken Annakin directed the segments \"The Verger\" and \"Mr. Know-All\" [9bc3011b-37f8-4b46-8237-9fe9184a0b93, 1a8b84cc-5a29-4adb-a925-1ab46289f226].",
+      "abstained": false,
+      "f1": 0.0328,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": true,
+      "steps": 2,
+      "sub_queries": [
+        "films directed by J. Searle Dawley",
+        "films directed by Ken Annakin",
+        "list of films directed by both J. Searle Dawley and Ken Annakin"
+      ],
+      "elapsed_s": 36.85
+    },
+    {
+      "id": "dev-032",
+      "error": "Gemini server error 503"
+    },
+    {
+      "id": "dev-033",
+      "error": "Gemini server error 503"
+    },
+    {
+      "id": "dev-034",
+      "error": "Gemini server error 503"
+    },
+    {
+      "id": "dev-035",
+      "error": "Gemini request timed out"
+    },
+    {
+      "id": "dev-036",
+      "category": "abstain",
+      "language": "en",
+      "question": "What did the user eat for breakfast this morning?",
+      "gold": "abstain",
+      "answer": "The provided passages do not contain information about what the user ate for breakfast this morning.",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": false,
+      "steps": 2,
+      "sub_queries": [
+        "What did the user eat for breakfast today?"
+      ],
+      "elapsed_s": 210.39
+    },
+    {
+      "id": "dev-037",
+      "error": "Gemini server error 503"
+    },
+    {
+      "id": "dev-038",
+      "category": "abstain",
+      "language": "en",
+      "question": "What did the prime minister say in today's press conference?",
+      "gold": "abstain",
+      "answer": "The provided passages do not contain information regarding a press conference held by a prime minister today.",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": false,
+      "steps": 2,
+      "sub_queries": [
+        "current Prime Minister of the United Kingdom",
+        "latest press conference summary Prime Minister today"
+      ],
+      "elapsed_s": 394.05
+    },
+    {
+      "id": "dev-039",
+      "category": "abstain",
+      "language": "en",
+      "question": "What is the weather in Tbilisi right now?",
+      "gold": "abstain",
+      "answer": "The provided passages do not contain information about the current weather in Tbilisi.",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": false,
+      "steps": 2,
+      "sub_queries": [
+        "current weather in Tbilisi Georgia"
+      ],
+      "elapsed_s": 164.2
+    },
+    {
+      "id": "dev-040",
+      "category": "abstain",
+      "language": "en",
+      "question": "What are the winning lottery numbers from last night?",
+      "gold": "abstain",
+      "answer": "The provided passages do not contain information regarding winning lottery numbers from last night.",
+      "abstained": false,
+      "f1": 0.0,
+      "em": false,
+      "cite_p": 1.0,
+      "abs_correct": false,
+      "steps": 2,
+      "sub_queries": [
+        "winning lottery numbers for last night results"
+      ],
+      "elapsed_s": 203.32
+    }
+  ]
+}
