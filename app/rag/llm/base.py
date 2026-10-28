@@ -56,6 +56,43 @@ class LLMClient(ABC):
             LLMError (or subclass) on any failure.
         """
 
+    def complete_with_tools(
+        self,
+        messages: "list[dict]",
+        tools: "list[dict]",
+        *,
+        system: str = "",
+        temperature: float = 0.0,
+        max_tokens: int = 1024,
+    ) -> "tuple[str | None, list[dict]]":
+        """
+        Send a multi-turn conversation with tool schemas and return either:
+          (final_text, [])             — model gave a text answer (no tool call)
+          (None, [{"name": ..., "args": {...}}])  — model requested tool calls
+
+        The default implementation ignores tools and falls back to complete().
+        Override in providers that natively support function calling.
+
+        Args:
+            messages: Conversation history in the format:
+                      [{"role": "user"|"model", "content": str}]
+                      Tool responses use role "tool" with content as a JSON string.
+            tools:    List of tool schema dicts (provider-specific format).
+            system:   System instruction.
+            temperature / max_tokens: Generation parameters.
+
+        Returns:
+            Tuple of (final_text, tool_calls).
+        """
+        # Default: ignore tools, concatenate last user message and call complete().
+        user_text = ""
+        for msg in reversed(messages):
+            if msg.get("role") == "user":
+                user_text = str(msg.get("content", ""))
+                break
+        resp = self.complete(user_text, system=system, temperature=temperature, max_tokens=max_tokens)
+        return resp.text, []
+
     def complete_json(
         self,
         prompt: str,

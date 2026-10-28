@@ -286,3 +286,51 @@ performance, because the pipeline would silently return low-quality results.
   lightweight dedicated check that is caught on exception.
 
 **Changed by owner:**
+
+---
+
+## 2026-10-29 — Tool-calling architecture (final hardening)
+
+**Decision:** Implement the tool loop as an extension of the existing pipeline, not a replacement.
+The existing query-understanding → hybrid_search → abstention path is preserved; the tool loop
+replaces only the final answer-generation step (the `llm.complete()` call).
+
+**Why:** The existing retrieval pipeline is already debugged and produces good recall. Replacing it
+with a pure tool-driven flow would lose proven components and risk regressions hours before
+the deadline. The tool loop extends the pipeline: the LLM starts with already-retrieved context
+and may call tools to gather more evidence.
+
+**Three tools chosen:** `search` (calls `hybrid_search`), `get_document` (DB lookup by chunk_id),
+`compare_claims` (LLM-based two-passage comparison). These map directly to the assignment's
+`search_documents`, `get_document`, and `compare_claims` requirements.
+
+**Tool schemas in Gemini functionDeclarations format:** Using the provider's native format
+avoids an abstraction layer that the owner would need to explain. The format is a simple dict.
+
+**`tool_trace` sanitisation:** Tool name + args + result summary only. Raw chunk text is excluded
+from the trace to keep API responses compact and avoid leaking corpus text via the trace.
+
+**Alternatives rejected:**
+- Replace the entire pipeline with a pure tool loop — too risky at deadline; would discard
+  working abstention, conflict detection, and citation verification components.
+- Use OpenAI-format tool schemas — we use Gemini; no reason to add a translation layer.
+- Make `complete_with_tools()` abstract — would break `MockLLMClient` (already in 134 tests).
+  Made it a default implementation instead.
+
+**Changed by owner:**
+
+---
+
+## 2026-10-29 — Test split expanded to 40 questions
+
+**Decision:** Added 10 questions to `eval/questions/test.jsonl` to reach the 40-question minimum.
+New questions added: bridge×3, comparison×2, abstain×2, unanswerable×1, conflict×1,
+prompt_injection×1.
+
+**Why:** Assignment requires minimum 40 evaluation questions. Test had only 30.
+
+**Note on gold_doc_ids:** New questions use `gold_doc_ids: []` because verifying UUIDs against
+the live DB is not possible from the development environment. Retrieval-recall metrics are skipped
+for questions without gold_doc_ids; RAG metrics (F1, abstention accuracy) still apply.
+
+**Changed by owner:**

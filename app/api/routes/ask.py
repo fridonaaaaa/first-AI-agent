@@ -53,6 +53,7 @@ class AskResponse(BaseModel):
     steps_used: int
     abstained: bool
     retrieval_mode: str = "hybrid_rerank"  # "bm25_only" when embedding model mismatch
+    tool_trace: list[dict] = []  # sanitised tool-call log (no raw chunk text)
 
 
 @router.post("/ask", response_model=AskResponse)
@@ -109,4 +110,5 @@ async def ask(request: Request, body: AskRequest) -> AskResponse:
         steps_used=result.steps_used,
         abstained=bool(result.abstention and result.abstention.should_abstain),
         retrieval_mode=result.retrieval_mode,
+        tool_trace=result.tool_trace,
     )

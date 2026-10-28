@@ -50,6 +50,41 @@ class GeminiClient(LLMClient):
     # LLMClient interface
     # ------------------------------------------------------------------
 
+    def complete_with_tools(
+        self,
+        messages: list[dict],
+        tools: list[dict],
+        *,
+        system: str = "",
+        temperature: float = 0.0,
+        max_tokens: int = 1024,
+    ) -> "tuple[str | None, list[dict]]":
+        """
+        Call Gemini with function-calling enabled.
+
+        Returns (final_text, []) when the model gives a text response, or
+        (None, tool_calls) when the model requests one or more tool calls.
+        tool_calls is a list of {"name": str, "args": dict}.
+        """
+        contents = self._messages_to_gemini(messages)
+        body: dict = {
+            "contents": contents,
+            "tools": [{"functionDeclarations": tools}],
+            "tool_config": {"function_calling_config": {"mode": "AUTO"}},
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_tokens,
+            },
+        }
+        if system:
+            body["systemInstruction"] = {"parts": [{"text": system}]}
+
+        url = _API_URL.format(model=self._model, key=self._api_key)
+
+        # Tool-calling responses are never cached (they depend on live tool results).
+        resp = self._post_with_retry(url, body)
+        return self._parse_tool_response(resp)
+
     def complete(
         self,
         prompt: str,
@@ -138,6 +173,85 @@ class GeminiClient(LLMClient):
             )
         except (KeyError, IndexError) as exc:
             raise LLMError(f"Unexpected Gemini response shape: {data}") from exc
+
+    # ------------------------------------------------------------------
+    # Function-calling helpers
+    # ------------------------------------------------------------------
+
+    def _messages_to_gemini(self, messages: list[dict]) -> list[dict]:
+        """
+        Convert internal message format to Gemini's `contents` list.
+
+        Internal format:
+          {"role": "user"|"model", "content": str}
+          {"role": "tool", "name": str, "content": str}  — tool response
+
+        Gemini format:
+          {"role": "user"|"model", "parts": [{...}]}
+          Tool results are sent as "user" role with functionResponse parts.
+        """
+        contents = []
+        for msg in messages:
+            role = msg.get("role", "user")
+            if role == "tool":
+                # Tool response — sent as user message with functionResponse part.
+                import json as _json
+                try:
+                    response_data = _json.loads(msg.get("content", "{}"))
+                except Exception:
+                    response_data = {"result": msg.get("content", "")}
+                contents.append({
+                    "role": "user",
+                    "parts": [{
+                        "functionResponse": {
+                            "name": msg.get("name", "unknown"),
+                            "response": response_data,
+                        }
+                    }],
+                })
+            elif role == "model_tool_call":
+                # Model's functionCall turn (re-sent to continue the conversation).
+                contents.append({
+                    "role": "model",
+                    "parts": [{"functionCall": msg.get("call", {})}],
+                })
+            else:
+                gemini_role = "model" if role == "model" else "user"
+                contents.append({
+                    "role": gemini_role,
+                    "parts": [{"text": str(msg.get("content", ""))}],
+                })
+        return contents
+
+    def _parse_tool_response(
+        self, data: dict
+    ) -> "tuple[str | None, list[dict]]":
+        """
+        Parse a Gemini response that may contain functionCall parts.
+
+        Returns (final_text, []) or (None, tool_calls).
+        """
+        try:
+            candidate = data["candidates"][0]
+            parts = candidate["content"]["parts"]
+        except (KeyError, IndexError) as exc:
+            raise LLMError(f"Unexpected Gemini tool response shape: {data}") from exc
+
+        tool_calls = []
+        text_parts = []
+        for part in parts:
+            if "functionCall" in part:
+                fc = part["functionCall"]
+                tool_calls.append({
+                    "name": fc.get("name", ""),
+                    "args": dict(fc.get("args", {})),
+                })
+            elif "text" in part:
+                text_parts.append(part["text"])
+
+        if tool_calls:
+            return None, tool_calls
+        return "".join(text_parts).strip(), []
 
     # ------------------------------------------------------------------
     # Disk cache helpers

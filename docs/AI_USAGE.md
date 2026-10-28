@@ -209,3 +209,29 @@ Generated:
 - `docs/DECISIONS.md`: appended mismatch guard decision
 
 Changed by owner:
+
+---
+
+## Session 2026-10-29 (Final hardening pass)
+
+**Generated:**
+- `app/rag/tools.py` — tool schemas (Gemini functionDeclarations format) and executors for
+  `search`, `get_document`, `compare_claims`; `execute_tool()` dispatcher with session isolation
+- `app/rag/llm/base.py` — added `complete_with_tools()` default implementation
+- `app/rag/llm/gemini.py` — implemented `complete_with_tools()` using Gemini function-calling API;
+  added `_messages_to_gemini()` and `_parse_tool_response()` helpers
+- `app/rag/llm/mock.py` — added `complete_with_tools()` with scripted tool-call support for tests
+- `app/rag/pipeline.py` — added `tool_trace` field to `PipelineResult`; replaced plain `llm.complete()`
+  answer-generation with bounded tool loop using `complete_with_tools()`
+- `app/api/routes/ask.py` — added `tool_trace` field to `AskResponse`
+- `tests/test_tools.py` — 20 new tests: schema validation, execute_tool dispatching,
+  MockLLMClient tool scripting, pipeline integration (tool_trace populated/empty),
+  iteration cap, session isolation
+- `eval/questions/test.jsonl` — added 10 questions (test-031 to test-040) to reach 40 total
+- `docs/EVAL_REPORT.md` — updated to reflect 63 dev + 40 test, added chunking comparison section,
+  error analysis, and metric limitations
+- `docs/STATUS.md` — updated with current state of all steps
+- `FINAL_CHECKLIST.md` — requirement-to-evidence matrix for all assignment requirements
+- Appended to `docs/DECISIONS.md`: tool-calling architecture decision + test-split expansion
+
+**Changed by owner:**

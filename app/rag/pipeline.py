@@ -21,6 +21,7 @@ executed or interpolated into code — prompt-injection defense.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 
 import psycopg2
@@ -32,6 +33,7 @@ from app.rag.citation import CitationResult, verify_citations
 from app.rag.conflict import ConflictVerdict, detect_conflicts
 from app.rag.llm.base import LLMClient
 from app.rag.query_understanding import understand_query
+from app.rag.tools import TOOL_SCHEMAS, execute_tool
 from app.retrieval.embeddings import get_stored_model_name
 from app.retrieval.hybrid import hybrid_search
 from app.retrieval.rerank import CandidateChunk
@@ -64,6 +66,7 @@ class PipelineResult:
     citation_check: CitationResult | None
     steps_used: int
     retrieval_mode: str = "hybrid_rerank"  # "bm25_only" when embedding model mismatch
+    tool_trace: list[dict] = field(default_factory=list)
 
 
 def _format_context(chunks: list[CandidateChunk]) -> str:
@@ -211,19 +214,96 @@ def run_pipeline(
     # 4. Conflict detection
     conflicts = detect_conflicts(all_chunks, llm)
 
-    # 5. Generate answer
+    # 5. Generate answer via bounded tool loop.
+    #    The LLM receives the already-retrieved context and may call tools
+    #    (search / get_document / compare_claims) for up to max_steps additional
+    #    iterations before it must produce a final text answer.
     context = _format_context(all_chunks)
     conflict_notice = _conflict_notice(conflicts)
     answer_lang = "Georgian" if lang == "georgian" else "English"
     system = _ANSWER_SYSTEM.format(language=answer_lang)
 
-    prompt = (
+    initial_prompt = (
         f"{conflict_notice}"
         f"Question: {raw_query}\n\n"
         f"Passages:\n{context}"
     )
-    resp = llm.complete(prompt, system=system, temperature=0.0, max_tokens=1024)
-    raw_answer = resp.text.strip()
+
+    messages: list[dict] = [{"role": "user", "content": initial_prompt}]
+    tool_trace: list[dict] = []
+    raw_answer = ""
+    tool_steps_remaining = max(0, max_steps - steps)
+
+    for _iteration in range(tool_steps_remaining):
+        final_text, tool_calls = llm.complete_with_tools(
+            messages,
+            TOOL_SCHEMAS,
+            system=system,
+            temperature=0.0,
+            max_tokens=1024,
+        )
+
+        if not tool_calls:
+            # Model gave a text answer — we are done.
+            raw_answer = (final_text or "").strip()
+            break
+
+        # Execute each tool call and extend the conversation.
+        for call in tool_calls:
+            tool_name = call.get("name", "")
+            tool_args = call.get("args", {})
+            steps += 1
+            try:
+                result = execute_tool(
+                    tool_name,
+                    tool_args,
+                    conn=conn,
+                    session_id=session_id,
+                    doc_id=doc_id,
+                    llm=llm,
+                )
+            except ValueError as exc:
+                result = {"error": str(exc)}
+
+            # Sanitised trace entry (no raw chunk text to keep logs compact).
+            trace_entry: dict = {
+                "tool": tool_name,
+                "args": {k: v for k, v in tool_args.items() if k != "passage_a" and k != "passage_b"},
+            }
+            if "error" in result:
+                trace_entry["error"] = result["error"]
+            elif "count" in result:
+                trace_entry["result_count"] = result.get("count", 0)
+            elif "verdict" in result:
+                trace_entry["verdict"] = result.get("verdict", "")
+            elif "chunk_id" in result:
+                trace_entry["chunk_id"] = result.get("chunk_id", "")
+            tool_trace.append(trace_entry)
+
+            # Append the model's function-call turn and our response to messages.
+            messages.append({
+                "role": "model_tool_call",
+                "call": {"name": tool_name, "args": tool_args},
+            })
+            messages.append({
+                "role": "tool",
+                "name": tool_name,
+                "content": json.dumps(result, ensure_ascii=False),
+            })
+    else:
+        # Iteration cap reached without a final text response — get one now
+        # with tools disabled (force text by calling complete() directly).
+        if not raw_answer:
+            last_context = "\n\n".join(
+                msg["content"] for msg in messages if msg.get("role") == "user"
+            )
+            resp = llm.complete(last_context, system=system, temperature=0.0, max_tokens=1024)
+            raw_answer = resp.text.strip()
+
+    if not raw_answer:
+        # Fallback if the loop produced nothing (e.g. all iterations used on tools).
+        resp = llm.complete(initial_prompt, system=system, temperature=0.0, max_tokens=1024)
+        raw_answer = resp.text.strip()
 
     # 6. Citation verification
     retrieved_ids = {c.chunk_id for c in all_chunks}
@@ -240,4 +320,5 @@ def run_pipeline(
         citation_check=citation_result,
         steps_used=steps,
         retrieval_mode=retrieval_mode,
+        tool_trace=tool_trace,
     )
