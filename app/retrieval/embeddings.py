@@ -34,7 +34,13 @@ _HF_API_URL = (
 
 
 def _backend() -> str:
-    return os.getenv("EMBEDDING_BACKEND", "local").lower()
+    backend = os.getenv("EMBEDDING_BACKEND", "local").lower()
+    if backend == "local":
+        try:
+            import fastembed  # noqa: F401
+        except ImportError:
+            return "hf_api"
+    return backend
 
 
 # ── local backend ──────────────────────────────────────────────────────────────
