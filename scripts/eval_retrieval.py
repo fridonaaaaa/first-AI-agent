@@ -56,10 +56,10 @@ def _fetch_chunk_titles(conn, chunk_ids: list[str]) -> dict[str, str]:
     with conn.cursor() as cur:
         cur.execute(
             f"""
-            SELECT c.chunk_id, d.title
+            SELECT c.id, d.title
             FROM   chunks c
-            JOIN   documents d ON c.doc_id = d.doc_id
-            WHERE  c.chunk_id IN ({ph})
+            JOIN   documents d ON c.doc_id = d.id
+            WHERE  c.id IN ({ph})
             """,
             chunk_ids,
         )
@@ -95,8 +95,8 @@ def evaluate(questions: list[dict], cfg: dict, conn, top_k: int = 10) -> dict:
 
     for q in questions:
         gold_titles = {t.lower() for t in q.get("supporting_titles", [])}
-        if not gold_titles:
-            # Unanswerable — skip from retrieval metrics
+        if not gold_titles or q.get("expected_behavior") == "abstain":
+            # Abstain questions or questions with no supporting titles — skip from retrieval metrics
             per_q.append({"id": q["id"], "skipped": True})
             continue
 

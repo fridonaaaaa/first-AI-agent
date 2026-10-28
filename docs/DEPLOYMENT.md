@@ -4,16 +4,17 @@
 
 | Component | Service | Cost |
 |-----------|---------|------|
-| App server | Render (free Web Service) or Hugging Face Spaces Docker | $0 |
+| App server | Render free Web Service (Docker) | $0 |
 | Database | Supabase free tier — PostgreSQL + pgvector | $0 |
-| LLM | Google Gemini API free tier (gemini-2.0-flash) | $0 |
+| LLM | Google Gemini API free tier (gemini-3.1-flash-lite) | $0 |
+| Embeddings | fastembed local (ONNX, no API key needed) | $0 |
 | Total | | **$0** |
 
 ## Prerequisites
 
 - Docker installed locally
 - Supabase project with pgvector extension enabled
-- Gemini API key (free tier)
+- Gemini API key (free tier, from ai.google.dev)
 
 ## Step 1 — Clone and configure
 
@@ -33,18 +34,22 @@ psql "$DATABASE_URL" -f scripts/db/schema.sql
 ```
 
 The SQL file is idempotent (`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`).
-Run it once; re-running is safe.
+Run it once; re-running is safe. Schema migrations (e.g. adding `session_id`) are applied
+automatically at app startup via `app/core/migrations.py`.
 
 ## Step 3 — Load and embed corpus
 
 ```bash
-# Requires: venv activated + PYTHONPATH set, or pip install -e .
-python scripts/load_hotpotqa.py   # ~50 000 HotpotQA paragraphs → documents + chunks
-python scripts/embed_corpus.py    # fills embedding column in chunks (batch 64, resume-safe)
+# Requires: venv activated, or pip install -e .
+python scripts/load_hotpotqa.py   # ~29 000 HotpotQA paragraphs → documents + chunks
+python scripts/embed_corpus.py    # fills embedding column (resume-safe, batch 256)
 ```
 
-Embedding time: ~30 min on CPU for 50 000 chunks. The script is resume-safe — re-running
-skips already-embedded chunks.
+Embedding uses fastembed (local ONNX, no API key needed). ~12-40 chunks/s on CPU.
+The script resumes from where it left off — re-running skips already-embedded chunks.
+
+**Note:** DB is at ~526 MB on Supabase free tier (500 MB limit). Reads and queries
+continue to work; new uploads may be rejected by Supabase until storage is freed.
 
 ## Step 4 — Run locally (no Docker)
 
@@ -77,20 +82,19 @@ For production, point `DATABASE_URL` at Supabase and remove the `db` service.
    - `DATABASE_URL` — Supabase session-pooler URL
    - `ADMIN_TOKEN` — strong random string
    - `LLM_PROVIDER` — `gemini`
-   - `GEMINI_API_KEY`
-5. Deploy. First deploy pulls ~1.4 GB (sentence-transformers model download).
+   - `GEMINI_API_KEY` — used for both LLM and embedding fallback
+5. Deploy. First deploy pulls fastembed model (~90 MB) and app dependencies.
    Subsequent deploys reuse the Docker layer cache.
 
 ### Free-tier constraints
 
 | Limit | Render free | Impact |
 |-------|------------|--------|
-| RAM | 512 MB | sentence-transformers paraphrase-multilingual-MiniLM-L12-v2 uses ~420 MB — tight |
+| RAM | 512 MB | fastembed ONNX uses ~120 MB; well within limit |
 | CPU | shared | Embedding encoding is slow but functional |
 | Sleep | Spins down after 15 min inactivity | First request after sleep: ~30 s cold start |
 | Hours/month | 750 h | Enough for 1 service running all month |
-
-If RAM is tight, set `SENTENCE_TRANSFORMERS_HOME=/tmp` so the model downloads to disk rather than /root.
+| Filesystem | read-only except /tmp | LLM cache goes to /tmp (ephemeral) |
 
 ## Environment variables
 
@@ -101,11 +105,12 @@ See `.env.example` for the full list. Required at runtime:
 | `DATABASE_URL` | Yes | — | Postgres connection string (Supabase session-pooler) |
 | `ADMIN_TOKEN` | Yes | — | Protects POST/PUT/DELETE /documents |
 | `LLM_PROVIDER` | No | `gemini` | `gemini` or `mock` |
-| `GEMINI_API_KEY` | If gemini | — | Google AI Studio API key |
-| `EMBEDDING_MODEL` | No | `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` | Must match what was used at embed time |
+| `GEMINI_API_KEY` | If gemini | — | Google AI Studio key — LLM + embedding fallback |
+| `EMBEDDING_DIM` | No | `384` | Must match what was used at embed time |
+| `ABSTENTION_THRESHOLD` | No | `0.25` | Cosine similarity below this → abstain |
 | `RATE_LIMIT_PER_IP_PER_MINUTE` | No | `20` | Per-IP /ask rate limit |
 | `DAILY_CAP_ASK` | No | `1000` | Global daily /ask cap |
-| `LLM_CACHE_DIR` | No | `.cache/llm` | Disk cache for LLM responses |
+| `LLM_CACHE_DIR` | No | `/tmp/llm_cache` | Disk cache for LLM responses (ephemeral on Render) |
 
 ## Verifying a deployment
 
@@ -118,7 +123,7 @@ curl -X POST https://<your-app>.onrender.com/ask \
   -H "Content-Type: application/json" \
   -d '{"question": "Who invented the telephone?"}'
 
-# List documents (should return 50 000+ after loading corpus)
+# List documents (should return 29 000+ after loading corpus)
 curl https://<your-app>.onrender.com/documents
 ```
 
@@ -126,14 +131,15 @@ curl https://<your-app>.onrender.com/documents
 
 After a Render restart (or sleep/wake cycle):
 - BM25 stats and embeddings persist in Supabase — no rebuild needed.
-- The LLM disk cache (`.cache/llm/`) is ephemeral on Render free tier — responses will be re-fetched on the next cold start, but correctness is unaffected.
-- The embedding model singleton reloads on first request.
+- The LLM disk cache (`/tmp/llm_cache/`) is ephemeral — responses are re-fetched after restart.
+- The fastembed model reloads on first request (~5 s).
+- Schema migrations (`app/core/migrations.py`) run automatically at startup.
 
 ## Rate limits
 
 - Per-IP: `RATE_LIMIT_PER_IP_PER_MINUTE` (default 20 req/min, sliding 60 s window)
 - Global daily: `DAILY_CAP_ASK` (default 1 000 requests/day)
-- Both limits reset without a restart (in-memory counters, keyed by date/IP).
+- Both limits reset at midnight (in-memory counters).
 
 ## Secrets
 

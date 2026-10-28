@@ -17,7 +17,7 @@ FastAPI  (app/main.py)
    ├── GET  /health
    ├── POST /ask                    ← rate-limited (IP + daily cap)
    ├── GET  /documents
-   ├── POST/PUT/DELETE /documents   ← admin token (hmac.compare_digest)
+   ├── POST/PUT/DELETE /documents   ← admin token OR session_id (hmac.compare_digest)
    │
    ├── app/api/          API layer — no SQL, no LLM calls
    │    ├── auth.py
@@ -25,20 +25,20 @@ FastAPI  (app/main.py)
    │    └── routes/ask.py, documents.py, health.py
    │
    ├── app/rag/          RAG pipeline — all LLM calls live here
-   │    ├── pipeline.py            run_pipeline() orchestrates 8 steps
+   │    ├── pipeline.py            run_pipeline() orchestrates 7 steps
    │    ├── query_understanding.py lang detect → translate → rewrite → decompose
    │    ├── citation.py            extract + verify [chunk_id] markers
    │    ├── conflict.py            dup-group/numeric pairs → LLM verdict
-   │    ├── abstention.py          score gate + LLM sufficiency check
+   │    ├── abstention.py          cosine threshold gate (< 0.25 → abstain)
    │    └── llm/
    │         ├── base.py           LLMClient ABC + complete_json()
-   │         ├── gemini.py         Gemini REST, retry/backoff, disk cache
+   │         ├── gemini.py         Gemini REST (gemini-3.1-flash-lite), retry/backoff, disk cache
    │         ├── mock.py           scriptable mock (unit tests)
    │         └── factory.py        get_llm_client() from LLM_PROVIDER env var
    │
    ├── app/retrieval/    Search & ranking — no LLM calls
-   │    ├── embeddings.py          lazy SentenceTransformer singleton
-   │    ├── vector_store.py        pgvector cosine (<=>)
+   │    ├── embeddings.py          fastembed (local, ONNX) or Gemini API (fallback)
+   │    ├── vector_store.py        pgvector cosine (<=>), dimension guard
    │    ├── bm25.py                Okapi BM25            [OWNER-DEFENDED]
    │    ├── fusion.py              Reciprocal Rank Fusion [OWNER-DEFENDED]
    │    ├── rerank.py              Coverage-aware reranker[OWNER-DEFENDED]
@@ -53,35 +53,46 @@ FastAPI  (app/main.py)
    │
    └── app/core/
         ├── settings.py   typed Pydantic settings from env vars
-        ├── db.py         get_db() context manager
+        ├── db.py         get_db() context manager + retry for DNS flake
         ├── errors.py     typed exception hierarchy
+        ├── migrations.py idempotent ALTER TABLE for schema evolution
         └── logging.py    structlog
-
-External: PostgreSQL + pgvector on Supabase (free tier)
 ```
+
+External: PostgreSQL + pgvector on Supabase (free tier, 500 MB limit)
 
 ## Database schema (5 tables)
 
 ```
-documents    doc_id, title, "source", format, language, content_hash
-chunks       chunk_id, doc_id, text, embedding VECTOR(384), dup_group UUID,
+documents    id, title, source, format, language, content_hash, session_id
+             session_id IS NULL = global corpus; session_id = UUID = chat-scoped
+chunks       id, doc_id, text, embedding VECTOR(384), dup_group UUID,
              strategy, position, content_hash, metadata JSONB{token_count}
 bm25_postings  term, chunk_id, tf   (tf = count / doc_length, normalised)
 bm25_stats     term, df, idf
-bm25_corpus    total_docs, avg_doc_len, embedding_model  (singleton)
+bm25_corpus    total_docs, avg_doc_len, embedding_model  (singleton row id=1)
 ```
 
-## RAG pipeline — 8 steps
+## RAG pipeline — 7 steps
 
 ```
 1. understand_query   detect lang → translate Georgian → rewrite → ≤4 sub-queries
 2. hybrid_search      embed → dense top-40 + BM25 top-40 → RRF → top-10
-3. check_abstention   gate 1: top RRF score < threshold → abstain immediately
-                      gate 2: LLM sufficiency → abstain with what was found
+3. check_abstention   cosine_sim of top chunk < 0.25 → abstain immediately
+                      (RRF scores cannot signal irrelevance; cosine can)
 4. detect_conflicts   same dup_group / numeric values → LLM structured verdict
 5. generate_answer    LLM reads chunks + conflict notice → [chunk_id] citations
 6. verify_citations   strip any [id] not in retrieved set (anti-hallucination)
 7. return result      answer + sources + conflicts + sub_queries + steps_used
+```
+
+## Embedding backend priority
+
+```
+1. fastembed  (paraphrase-multilingual-MiniLM-L12-v2, ONNX Runtime)  — no rate limits
+2. Gemini API (gemini-embedding-001, outputDimensionality=384)        — fallback if fastembed missing
+3. HuggingFace inference API                                          — last resort
+All three produce 384-dim vectors. The DB records the model name for consistency checks.
 ```
 
 ## Owner-defended modules (interview targets)
@@ -96,6 +107,7 @@ bm25_corpus    total_docs, avg_doc_len, embedding_model  (singleton)
 ## Security
 
 - Admin writes: `hmac.compare_digest` — timing-attack safe
+- Session uploads: any caller may upload/delete documents scoped to their own session_id
 - Rate limiting: per-IP (20/min) + global daily cap (1000)
 - Retrieved text: treated as untrusted DATA, never as instructions
 - UI: all server-side values escaped with `escHtml()` — no XSS

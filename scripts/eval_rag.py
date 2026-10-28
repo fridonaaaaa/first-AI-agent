@@ -79,9 +79,12 @@ def citation_precision(answer: str, retrieved_ids: set[str]) -> float:
     return valid / len(cited)
 
 
-def abstention_correct(abstained: bool, gold_answer: str) -> bool:
-    """True if the system correctly abstained (gold empty) or answered (gold non-empty)."""
-    should_abstain = gold_answer.strip() == ""
+def abstention_correct(abstained: bool, gold_answer: str, expected_behavior: str = "") -> bool:
+    """True if the system correctly abstained or answered per expected_behavior."""
+    if expected_behavior:
+        should_abstain = expected_behavior == "abstain"
+    else:
+        should_abstain = gold_answer.strip() in ("", "abstain")
     return abstained == should_abstain
 
 
@@ -128,14 +131,16 @@ def main() -> None:
             per_q.append({"id": q["id"], "error": str(exc)})
             continue
 
-        gold    = q.get("answer", "")
+        gold    = q.get("gold_answer", q.get("answer", ""))
+        expected = q.get("expected_behavior", "")
         abstained = bool(result.abstention and result.abstention.should_abstain)
         retrieved_ids = {c.chunk_id for c in result.chunks}
 
-        f1  = token_f1(result.answer, gold) if gold else 0.0
-        em  = exact_match(result.answer, gold) if gold else False
+        is_answerable = expected != "abstain" and gold.strip() not in ("", "abstain")
+        f1  = token_f1(result.answer, gold) if is_answerable else 0.0
+        em  = exact_match(result.answer, gold) if is_answerable else False
         cp  = citation_precision(result.answer, retrieved_ids)
-        abs_ok = abstention_correct(abstained, gold)
+        abs_ok = abstention_correct(abstained, gold, expected)
 
         total_f1    += f1
         total_em    += int(em)
@@ -144,7 +149,7 @@ def main() -> None:
 
         per_q.append({
             "id":          q["id"],
-            "type":        q.get("type"),
+            "category":    q.get("category", q.get("type")),
             "language":    q.get("language"),
             "question":    q["question"],
             "gold":        gold,

@@ -1,0 +1,289 @@
+{
+  "config": {
+    "config_id": "C1",
+    "name": "dense_only",
+    "description": "Dense vector search only \u2014 no BM25, no reranker",
+    "retrieval_mode": "dense_only",
+    "retrieval_top_k": 10,
+    "rrf_k": 60,
+    "bm25_k1": 1.5,
+    "bm25_b": 0.75,
+    "lambda_rerank": 0.5,
+    "use_reranker": false,
+    "use_decomposition": false
+  },
+  "split": "dev",
+  "elapsed": 94.0,
+  "recall_at_k": 0.4,
+  "mrr": 0.31285714285714283,
+  "n_answerable": 35,
+  "n_total": 40,
+  "top_k": 10,
+  "per_question": [
+    {
+      "id": "dev-001",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-002",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-003",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-004",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-005",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-006",
+      "type": null,
+      "hit": true,
+      "rank": 1,
+      "rr": 1.0
+    },
+    {
+      "id": "dev-007",
+      "type": null,
+      "hit": true,
+      "rank": 4,
+      "rr": 0.25
+    },
+    {
+      "id": "dev-008",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-009",
+      "type": null,
+      "hit": true,
+      "rank": 1,
+      "rr": 1.0
+    },
+    {
+      "id": "dev-010",
+      "type": null,
+      "hit": true,
+      "rank": 2,
+      "rr": 0.5
+    },
+    {
+      "id": "dev-011",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-012",
+      "type": null,
+      "hit": true,
+      "rank": 1,
+      "rr": 1.0
+    },
+    {
+      "id": "dev-013",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-014",
+      "type": null,
+      "hit": true,
+      "rank": 2,
+      "rr": 0.5
+    },
+    {
+      "id": "dev-015",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-016",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-017",
+      "type": null,
+      "hit": true,
+      "rank": 1,
+      "rr": 1.0
+    },
+    {
+      "id": "dev-018",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-019",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-020",
+      "type": null,
+      "hit": true,
+      "rank": 1,
+      "rr": 1.0
+    },
+    {
+      "id": "dev-021",
+      "type": null,
+      "hit": true,
+      "rank": 2,
+      "rr": 0.5
+    },
+    {
+      "id": "dev-022",
+      "type": null,
+      "hit": true,
+      "rank": 5,
+      "rr": 0.2
+    },
+    {
+      "id": "dev-023",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-024",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-025",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-026",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-027",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-028",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-029",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-030",
+      "type": null,
+      "hit": true,
+      "rank": 1,
+      "rr": 1.0
+    },
+    {
+      "id": "dev-031",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-032",
+      "type": null,
+      "hit": false,
+      "rank": null,
+      "rr": 0.0
+    },
+    {
+      "id": "dev-033",
+      "type": null,
+      "hit": true,
+      "rank": 1,
+      "rr": 1.0
+    },
+    {
+      "id": "dev-034",
+      "type": null,
+      "hit": true,
+      "rank": 1,
+      "rr": 1.0
+    },
+    {
+      "id": "dev-035",
+      "type": null,
+      "hit": true,
+      "rank": 1,
+      "rr": 1.0
+    },
+    {
+      "id": "dev-036",
+      "skipped": true
+    },
+    {
+      "id": "dev-037",
+      "skipped": true
+    },
+    {
+      "id": "dev-038",
+      "skipped": true
+    },
+    {
+      "id": "dev-039",
+      "skipped": true
+    },
+    {
+      "id": "dev-040",
+      "skipped": true
+    }
+  ]
+}

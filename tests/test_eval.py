@@ -113,7 +113,7 @@ def test_dev_questions_parseable():
     for q in questions:
         assert "id" in q
         assert "question" in q
-        assert "type" in q
+        assert "category" in q   # new schema; old schema used "type"
         assert "language" in q
 
 

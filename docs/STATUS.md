@@ -1,37 +1,31 @@
 # STATUS.md
 
 ## Current phase
-Phase 6+7 — Docs + Deploy (COMPLETE). Live pipeline verified working.
+Phase 5 — Evaluation (in progress). Retrieval eval complete; RAG eval running.
 
-## Last finished item
-Pipeline fully operational end-to-end. Verified answer returned for "Where is Strasbourg located?"
-in ~15s (cold start). DB: 2,182 chunks from 764 HotpotQA docs, all embedded.
-
-Critical fixes applied this session:
-  - `gemini.py`              — model corrected to `gemini-3.1-flash-lite` (verified 2026-10-27)
-  - `bm25.py`               — batched all per-term DB queries into 2 round-trips (was 2N+1)
-  - `vector_store.py`       — fixed column name chunk_id → id
-  - `hybrid.py`             — fixed column name chunk_id → id in chunk fetch
-  - `embed_corpus.py`       — fixed column name chunk_id → id
-  - `db.py`                 — retry loop for DNS failures
-  - `.env`                  — ABSTENTION_THRESHOLD lowered to 0.005 (RRF max is ~0.033)
-  - `index.html`            — UI redesign
+## Last finished items (2026-10-28)
+- Phase 2: Bug fixes — abstention gate (cosine threshold replaces dead RRF gate),
+  dimension guard in vector_store, session-scoped public uploads, format accept fix
+- Phase 4: Eval questions written — 40 dev + 20 test, real HotpotQA multi-hop questions
+  where all supporting documents exist in the corpus, plus 5/3 abstain questions
+- Retrieval eval runs complete for C1, C2, C3 on dev split (see EVAL_REPORT.md)
+- RAG eval (C4) running now — ~40 questions, Gemini LLM, ~10-20 min total
 
 ## In progress
-None.
+- RAG eval: `python scripts/eval_rag.py --split dev --config eval/configs/c4_full_pipeline.json`
 
-## Next (owner actions)
-1. Keep loading corpus: `python scripts/load_hotpotqa.py` (764 docs loaded, ~50k total)
-2. After load, embed:   `python scripts/embed_corpus.py`
-3. Retrieval eval:      `python scripts/eval_retrieval.py --split dev`
-4. RAG eval:            `python scripts/eval_rag.py --split dev`
-5. Deploy to Render (see docs/DEPLOYMENT.md)
-
-## Blockers
-- Full corpus not loaded — only 764 of 50,000 docs; most questions will abstain
-- TEST split must not be used until all tuning is done
+## Next
+1. Fill EVAL_REPORT.md with RAG eval numbers once C4 finishes
+2. Run test split evals (after all tuning done on dev)
+3. Commit everything
+4. Push to GitHub → Render redeploys automatically
 
 ## Test status
-- Unit tests: 129 passed, 0 failed (run `pytest tests/ -v --ignore=tests/test_registry.py`)
-- Integration tests: require live Supabase; run `pytest tests/test_registry.py -v`
-- Pipeline: verified returning answers at localhost:8000
+- Unit tests: 129 passed, 0 failed
+- Integration tests: require live Supabase (`pytest tests/test_registry.py -v`)
+- Eval questions: 40 dev + 20 test, schema validated by test suite
+
+## Blockers
+- TEST split must not be used until all dev tuning is done
+- Render free tier: 512 MB RAM — embedding model uses ~420 MB (tight but functional)
+- DB at 526 MB — over Supabase 500 MB free limit; reads still work, new uploads may fail

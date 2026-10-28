@@ -161,3 +161,33 @@ Changed by owner:
 - `tests/test_api.py`, `tests/test_rag.py`: updated mocks to accept new `session_id` kwarg
 
 Changed by owner:
+
+---
+
+## Session 2026-10-28 (Phase 2 bug fixes + Phase 4 eval questions + Phase 5 eval runs)
+
+**Generated / modified:**
+- `app/retrieval/embeddings.py`: switched to `gemini-embedding-001` (was `text-embedding-004`); fixed URL to `v1beta`; fixed payload to camelCase `outputDimensionality`; fixed API key loading via `get_settings()` not `os.getenv()`
+- `app/retrieval/rerank.py`: added `cosine_sim` field to `CandidateChunk`
+- `app/retrieval/hybrid.py`: populated `cosine_sim` from dense search scores
+- `app/retrieval/vector_store.py`: added dimension guard before query
+- `app/rag/abstention.py`: rewrote gate to use cosine similarity threshold (replaces dead RRF gate)
+- `app/rag/pipeline.py`: threaded cosine gate through pipeline
+- `app/core/settings.py`: added `abstention_threshold` field (default 0.25)
+- `app/api/routes/documents.py`: added `_require_write_access()`, session-scoped uploads without admin token, `.jsonl` support, removed `.docx`
+- `app/ingestion/registry.py`: fixed column order bug in `list_documents`, added `DocumentNotFoundError` raises
+- `app/ui/index.html`: fixed `accept` attribute to match allowed extensions
+- `scripts/embed_corpus.py`: added `--sleep` flag, 60s recovery retry
+- `Dockerfile`: added `libgomp1` for fastembed ONNX Runtime
+- `eval/questions/dev.jsonl`: 40 real HotpotQA multi-hop questions (full rewrite)
+- `eval/questions/test.jsonl`: 20 real HotpotQA multi-hop questions (full rewrite)
+- `scripts/eval_retrieval.py`: fixed SQL column names (`c.id`, `d.id`), skip abstain questions
+- `scripts/eval_rag.py`: fixed field names (`gold_answer`, `expected_behavior`, `category`)
+- `tests/test_rag.py`: updated for cosine_sim abstention logic
+- `tests/test_api.py`: updated `test_upload_document_missing_token` to expect 401
+- `tests/test_eval.py`: updated to check `category` not `type`
+- `docs/STATUS.md`, `docs/ARCHITECTURE.md`, `docs/DEPLOYMENT.md`, `docs/EVAL_REPORT.md`: full update
+- `docs/DECISIONS.md`: appended 3 new decisions
+
+Changed by owner:
+

@@ -93,7 +93,7 @@ docker compose up --build
 ## ტესტები
 
 ```bash
-pytest                          # 112 unit test — ყველა გადის
+pytest                          # 129 unit test — ყველა გადის
 pytest tests/test_registry.py   # ინტეგრ. (DB საჭიროა)
 ```
 
@@ -107,12 +107,14 @@ python scripts/eval_rag.py       --split dev --config eval/configs/c4_full_pipel
 python scripts/make_report.py    --split dev
 ```
 
-| კონფ. | სახელი | აღწერა |
-|-------|--------|---------|
-| C1 | dense_only | მხოლოდ dense ძიება |
-| C2 | hybrid_rrf | Dense + BM25 + RRF |
-| C3 | hybrid_rerank | C2 + coverage reranker |
-| C4 | full_pipeline | C3 + კითხვის დეკომპოზიცია |
+| კონფ. | სახელი | Recall@10 | MRR |
+|-------|--------|-----------|-----|
+| C1 | dense_only | 0.400 | 0.313 |
+| C2 | hybrid_rrf | **0.886** | **0.523** |
+| C3 | hybrid_rerank | 0.886 | 0.523 |
+| C4 | full_pipeline | — (RAG eval) | — |
+
+_Dev split, 35 answerable questions from HotpotQA._
 
 ---
 
@@ -123,7 +125,8 @@ python scripts/make_report.py    --split dev
 | `/health` | GET | ღია |
 | `/ask` | POST | ღია, rate-limited |
 | `/documents` | GET | ღია |
-| `/documents` | POST/PUT/DELETE | Admin token |
+| `/documents` | POST/DELETE | Admin token ან session_id |
+| `/documents/{id}` | PUT/DELETE | Admin token |
 
 ```bash
 curl -X POST http://localhost:8000/ask \

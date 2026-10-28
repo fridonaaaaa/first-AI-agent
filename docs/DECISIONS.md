@@ -202,3 +202,61 @@ model and corpus might approach.
 **Alternatives rejected:** Storing `session_id` on chunks (redundant, harder to migrate); server-side session store (no server state needed — client UUID is sufficient).
 
 **Changed by owner:**
+
+---
+
+## 2026-10-28 — Abstention gate: cosine similarity replaces RRF score
+
+**Decision:** Changed the abstention threshold signal from RRF score to cosine similarity.
+
+**Why:** RRF scores are bounded below by `1/(k + top_k) = 1/(60+10) ≈ 0.014` when any results exist.
+Any threshold below ~0.014 always passes; any threshold above it always abstains. The gate was
+dead code. Cosine similarity measures actual semantic distance to the query: < 0.25 genuinely
+means the retrieved chunks are unrelated to the question.
+
+**Implementation:** `CandidateChunk` gained a `cosine_sim` field populated from the dense search
+scores in `hybrid.py`. `pipeline.py` and `abstention.py` check `max(cosine_sim) < threshold`.
+
+**Alternatives rejected:** LLM sufficiency check (too slow and expensive for a first gate).
+
+**Changed by owner:**
+
+---
+
+## 2026-10-28 — Embedding backend: fastembed primary, Gemini API fallback
+
+**Decision:** `app/retrieval/embeddings.py` tries fastembed first (local ONNX,
+`paraphrase-multilingual-MiniLM-L12-v2`), falls back to Gemini `gemini-embedding-001`
+(384-dim via `outputDimensionality`), then HuggingFace inference API.
+
+**Why:** fastembed has no rate limits and works offline. Gemini `text-embedding-004` was
+attempted first but returned 404 on this API key — only `gemini-embedding-001` exists on
+the free tier. The model name in the request must be `models/gemini-embedding-001` and the
+JSON key is camelCase `outputDimensionality`, not snake_case.
+
+**Alternatives rejected:** sentence-transformers (too large for Render 512 MB free tier);
+fastembed on its own would fail on machines without libgomp1 — Dockerfile adds it.
+
+**Changed by owner:**
+
+---
+
+## 2026-10-28 — Eval questions: HotpotQA validation cross-referenced with corpus
+
+**Decision:** Eval questions are drawn from HotpotQA validation set, filtered to questions
+where all `supporting_facts` titles exist in the loaded corpus (29,009 documents).
+3,130 questions matched; 20 bridge + 15 comparison selected for dev, 10 + 7 for test.
+Seed=42 for reproducibility.
+
+**Why:** Using real multi-hop questions from the same dataset the corpus was built from
+ensures the eval measures genuine multi-document reasoning, not trivial lookups.
+Abstain questions (5 dev, 3 test) are real-time queries no static corpus can answer.
+
+**Schema fields:** `id`, `split`, `category`, `question`, `gold_answer`, `gold_doc_ids`,
+`supporting_titles`, `expected_behavior`, `language`.
+
+**Alternatives rejected:** Manually crafted questions (subjective, gameable); full HotpotQA
+test split (not available in the distractor subset downloaded locally).
+
+**Changed by owner:**
+
