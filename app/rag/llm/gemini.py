@@ -28,8 +28,8 @@ _API_URL = (
     "/{model}:generateContent?key={key}"
 )
 _DEFAULT_MODEL = "gemini-3.1-flash-lite"
-_MAX_RETRIES = 2
-_BASE_DELAY = 1.5   # seconds; doubles each retry
+_MAX_RETRIES = 4
+_BASE_DELAY = 5.0   # seconds; doubles each retry (5, 10, 20, 40 s)
 
 
 class GeminiClient(LLMClient):

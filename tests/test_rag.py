@@ -169,7 +169,16 @@ def test_abstain_on_empty_chunks():
     llm = MockLLMClient()
     decision = check_abstention("some query", [], llm)
     assert decision.should_abstain is True
-    assert decision.reason == "low_score"
+    assert decision.reason == "no_results"
+
+
+def test_abstain_when_llm_says_no():
+    # Gate 1 passes (cosine=0.5 >= 0.25), but LLM Gate 2 says NO → abstain.
+    llm = MockLLMClient(fallback="NO")
+    chunks = [_chunk("a", score=0.5, text="Tbilisi is the capital of Georgia.", cosine_sim=0.5)]
+    decision = check_abstention("What is the weather in Tbilisi right now?", chunks, llm, cosine_threshold=0.25)
+    assert decision.should_abstain is True
+    assert decision.reason == "insufficient"
 
 
 def test_abstain_on_low_cosine():

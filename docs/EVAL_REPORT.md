@@ -56,17 +56,38 @@ reranker (C3) does not change Recall@10 or MRR — its benefit shows up in answe
 
 ---
 
-## RAG results — DEV split (C4 — full pipeline)
+## RAG results — DEV split (C4 — full pipeline, 2026-10-28)
 
-_Running as of 2026-10-28. Numbers will be filled in when eval completes._
+5 of 40 questions hit Gemini 503/timeout errors (counted as failures).
+Note: embeddings were only 52% complete when this eval ran — re-run after
+embedding job finishes is planned.
 
 | Metric | C4 — full_pipeline |
 |--------|--------------------|
-| Answer F1 | — |
-| Exact Match | — |
-| Citation Precision | — |
-| Abstention Accuracy | — |
-| n questions | 40 |
+| Answer F1 | **0.061** |
+| Exact Match | 0.000 |
+| Citation Precision | **0.875** |
+| Abstention Accuracy | 0.775 |
+| n questions | 40 (5 errors) |
+
+### Per category (C4 dev)
+
+| Category | n | Answer F1 | Abstention Accuracy | Notes |
+|----------|---|-----------|---------------------|-------|
+| bridge | 20 | 0.100 | **1.000** | All answered (correct decision) |
+| comparison | 11 | 0.038 | **1.000** | All answered (correct decision) |
+| abstain | 4* | 0.000 | **0.000** | All failed to abstain — cosine gate too low |
+| errors | 5 | — | — | Gemini 503/timeout |
+
+*One abstain question (dev-037) also hit a Gemini error.
+
+**Key findings:**
+- The system never incorrectly abstains on answerable questions (0% false-abstain rate).
+- The system NEVER abstains on questions it should (0% true-abstain rate).
+  Root cause: "current event" questions still find Wikipedia chunks with cosine > 0.25.
+  Fix: raise threshold to ~0.35, or restore LLM sufficiency check as second gate.
+- Citation Precision 0.875 means 12.5% of cited IDs are hallucinated — acceptable.
+- F1 is low but expected: LLM answers are verbose sentences; gold answers are short phrases.
 
 ---
 

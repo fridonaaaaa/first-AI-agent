@@ -83,6 +83,32 @@ def retrieve(query: str, cfg: dict, conn, top_k: int = 10) -> list[str]:
         dense = search_dense(vec, top_k=top_k * 2, conn=conn)
         bm25  = BM25Searcher(conn=conn, k1=k1, b=b).search(query, top_k=top_k * 2)
         fused = reciprocal_rank_fusion([dense, bm25], k=rrf_k)
+
+        if mode == "hybrid_rerank":
+            # Apply coverage reranker — changes MRR (order), not Recall@K (same set).
+            from app.retrieval.hybrid import _fetch_chunk_rows
+            from app.retrieval.rerank import CandidateChunk, coverage_rerank
+            cosine_map = {cid: sim for cid, sim in dense}
+            fused_pool = fused[:top_k * 2]
+            rows = _fetch_chunk_rows([cid for cid, _ in fused_pool], conn)
+            candidates = [
+                CandidateChunk(
+                    chunk_id=cid,
+                    rrf_score=score,
+                    text=rows[cid]["text"] if cid in rows else "",
+                    dup_group=rows[cid].get("dup_group") if cid in rows else None,
+                    doc_id=rows[cid].get("doc_id") if cid in rows else None,
+                    title=rows[cid].get("title") if cid in rows else None,
+                    cosine_sim=cosine_map.get(cid, 0.0),
+                )
+                for cid, score in fused_pool
+                if cid in rows
+            ]
+            reranked = coverage_rerank(
+                candidates, lambda_=cfg.get("lambda_rerank", 0.5)
+            )
+            return [c.chunk_id for c in reranked[:top_k]]
+
         return [cid for cid, _ in fused[:top_k]]
 
     raise ValueError(f"Unknown retrieval_mode: {mode!r}")
