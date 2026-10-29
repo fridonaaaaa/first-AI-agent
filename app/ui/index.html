@@ -678,16 +678,11 @@ function _loadSessions() {
   try {
     const raw = localStorage.getItem(_LS_SESSIONS);
     if (raw) _sessions = JSON.parse(raw);
-    _currentId = localStorage.getItem(_LS_CURRENT) || null;
     _lastToken = localStorage.getItem(_LS_TOKEN) || "";
-  } catch { _sessions = []; _currentId = null; }
+  } catch { _sessions = []; }
 
-  // Validate currentId
-  if (_currentId && !_sessions.find(s => s.id === _currentId)) _currentId = null;
-
-  // Always have at least one session
-  if (_sessions.length === 0) _createSession();
-  else if (!_currentId) _currentId = _sessions[0].id;
+  // Always start fresh on every page load — create a new session immediately.
+  _createSession();
 }
 
 function _createSession() {
@@ -768,14 +763,28 @@ function renderChat() {
   chat.scrollTop = chat.scrollHeight;
 }
 
+function deleteSession(id) {
+  _sessions = _sessions.filter(s => s.id !== id);
+  if (_currentId === id) {
+    _currentId = _sessions.length ? _sessions[0].id : null;
+    if (!_currentId) _createSession();
+  }
+  _saveSessions();
+  renderHistory();
+  renderChat();
+}
+
 function renderHistory() {
   const list = document.getElementById("history-list");
   list.innerHTML = "";
   _sessions.forEach(s => {
     const el = document.createElement("div");
     el.className = "history-item" + (s.id === _currentId ? " active" : "");
-    el.textContent = s.label;
-    el.title = s.label;
+    el.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(s.label)}">${escHtml(s.label)}</span>
+      <button onclick="event.stopPropagation();deleteSession('${s.id}')" title="წაშლა" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:.85rem;padding:0 2px;line-height:1;flex-shrink:0">✕</button>`;
+    el.style.display = "flex";
+    el.style.alignItems = "center";
+    el.style.gap = "4px";
     el.onclick = () => switchSession(s.id);
     list.appendChild(el);
   });
