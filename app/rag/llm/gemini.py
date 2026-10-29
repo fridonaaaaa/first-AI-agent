@@ -1,7 +1,7 @@
 """
 Gemini provider — wraps the Google Generative AI REST API via httpx.
 
-Uses gemini-3.8-flash (recommended by Google API, replaces deprecated 2.0-flash).
+Uses gemini-3.1-flash-lite (confirmed available on this account's free tier).
 Rate limits on the free tier: check ai.google.dev/gemini-api/docs/rate-limits.
 
 Retry strategy: exponential backoff on 429 (rate limit) and 5xx errors.
@@ -27,7 +27,7 @@ _API_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models"
     "/{model}:generateContent?key={key}"
 )
-_DEFAULT_MODEL = "gemini-3.8-flash"
+_DEFAULT_MODEL = "gemini-3.1-flash-lite"
 _MAX_RETRIES = 2
 _BASE_DELAY = 2.0       # for 5xx errors: 2, 4 s
 _RATE_LIMIT_DELAY = 15.0  # for 429 errors: 15, 30 s — rate limits need a longer window
