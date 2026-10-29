@@ -730,8 +730,10 @@ let _sessions = [];
 let _currentId = null;
 let _lastToken = "";
 
-const _LS_SESSIONS = "ai_sessions_v2";
-const _LS_TOKEN    = "ai_token";
+const _LS_SESSIONS      = "ai_sessions_v2";
+const _LS_TOKEN         = "ai_token";
+const _LS_DEPLOY_VER    = "ai_deploy_ver";
+const _DEPLOY_VERSION   = "2026-10-29-3";
 
 function _currentSession() {
   return _sessions.find(s => s.id === _currentId) || null;
@@ -746,12 +748,26 @@ function _saveSessions() {
 }
 
 function _loadSessions() {
+  // Wipe chat history when a new version is deployed
+  if (localStorage.getItem(_LS_DEPLOY_VER) !== _DEPLOY_VERSION) {
+    localStorage.removeItem(_LS_SESSIONS);
+    localStorage.removeItem(_LS_TOKEN);
+    localStorage.setItem(_LS_DEPLOY_VER, _DEPLOY_VERSION);
+    _sessions = [];
+    _createSession();
+    return;
+  }
   try {
     const raw = localStorage.getItem(_LS_SESSIONS);
     if (raw) _sessions = JSON.parse(raw);
     _lastToken = localStorage.getItem(_LS_TOKEN) || "";
   } catch { _sessions = []; }
-  _createSession();
+  // Restore last session; only create a fresh one if there are none
+  if (_sessions.length === 0) {
+    _createSession();
+  } else {
+    _currentId = _sessions[0].id;
+  }
 }
 
 function _createSession() {
