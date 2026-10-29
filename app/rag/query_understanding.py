@@ -28,10 +28,12 @@ _TRANSLATE_SYSTEM = (
     "Output ONLY the English translation, nothing else."
 )
 
-_REWRITE_SYSTEM = (
-    "You are a search query optimizer. Rewrite the question as a clear, "
-    "keyword-rich English search query. Output ONLY the rewritten query, nothing else."
-)
+_REWRITE_DECOMPOSE_SYSTEM = """You are a search query optimizer.
+Given a question, return a JSON object with two keys:
+  "rewritten": a clean, keyword-rich English search query (one string)
+  "sub_queries": a list of 1–{max_sub} self-contained search queries, each
+                 targeting one step of the answer. Do NOT repeat the rewritten query.
+Output ONLY valid JSON."""
 
 _DECOMPOSE_SYSTEM = """You decompose multi-hop questions into simple sub-queries.
 Return a JSON object with one key "sub_queries": a list of 1–{max_sub} strings.
@@ -54,26 +56,12 @@ def translate_to_english(text: str, llm: LLMClient) -> str:
         return text
 
 
-def rewrite_query(query: str, llm: LLMClient) -> str:
-    """Return a clean English search query. Falls back to original on any LLM failure."""
-    try:
-        resp = llm.complete(query, system=_REWRITE_SYSTEM, temperature=0.0, max_tokens=256)
-        return resp.text.strip()
-    except (LLMTimeoutError, LLMError):
-        return query
-
-
 def decompose_query(
     query: str,
     llm: LLMClient,
-    max_sub_queries: int = 4,
+    max_sub_queries: int = 2,
 ) -> list[str]:
-    """
-    Decompose `query` into at most `max_sub_queries` sub-queries.
-
-    Returns a list of strings. Falls back to [query] on any parse failure
-    so the pipeline always has at least one sub-query to work with.
-    """
+    """Decompose query into sub-queries. Used directly by tests."""
     system = _DECOMPOSE_SYSTEM.format(max_sub=max_sub_queries)
     try:
         data = llm.complete_json(query, system=system, temperature=0.0, max_tokens=512)
@@ -85,25 +73,42 @@ def decompose_query(
         return [query]
 
 
+def rewrite_and_decompose(
+    query: str,
+    llm: LLMClient,
+    max_sub_queries: int = 2,
+) -> tuple[str, list[str]]:
+    """
+    Rewrite and decompose in one LLM call instead of two.
+
+    Returns (rewritten_query, sub_queries). Falls back gracefully on failure.
+    """
+    system = _REWRITE_DECOMPOSE_SYSTEM.format(max_sub=max_sub_queries)
+    try:
+        data = llm.complete_json(query, system=system, temperature=0.0, max_tokens=512)
+        rewritten = str(data.get("rewritten", query)).strip() or query
+        subs = data.get("sub_queries", [])
+        if not isinstance(subs, list) or not subs:
+            subs = [rewritten]
+        subs = [str(s).strip() for s in subs[:max_sub_queries] if str(s).strip()]
+        return rewritten, subs or [rewritten]
+    except (LLMMalformedResponseError, LLMTimeoutError, LLMError):
+        return query, [query]
+
+
 def understand_query(
     raw_query: str,
     llm: LLMClient,
-    max_sub_queries: int = 4,
+    max_sub_queries: int = 2,
 ) -> tuple[str, str, list[str]]:
     """
-    Full query understanding pipeline.
-
-    Args:
-        raw_query:      The user's original question (Georgian or English).
-        llm:            LLM client to use.
-        max_sub_queries: Maximum number of sub-queries to decompose into.
+    Full query understanding pipeline — one translation call (Georgian only)
+    plus one combined rewrite+decompose call.
 
     Returns:
         (original_language, rewritten_english_query, sub_queries)
-        where original_language is "georgian" or "english".
     """
     lang = "georgian" if is_georgian(raw_query) else "english"
     english = translate_to_english(raw_query, llm)
-    rewritten = rewrite_query(english, llm)
-    sub_queries = decompose_query(rewritten, llm, max_sub_queries)
+    rewritten, sub_queries = rewrite_and_decompose(english, llm, max_sub_queries)
     return lang, rewritten, sub_queries
