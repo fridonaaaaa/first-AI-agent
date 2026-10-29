@@ -483,6 +483,40 @@
     #send-btn:disabled { background: #CBD5E1; cursor: not-allowed; }
     #send-btn svg { pointer-events: none; }
 
+    /* ── Delete confirm overlay ── */
+    #del-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.4);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    #del-overlay.open { display: flex; }
+    #del-box {
+      background: #fff;
+      border-radius: var(--radius);
+      padding: 1.4rem 1.6rem 1.2rem;
+      width: 340px;
+      max-width: 95vw;
+      box-shadow: 0 8px 32px rgba(0,0,0,.15);
+    }
+    #del-box h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.25rem; }
+    #del-box p  { font-size: 0.82rem; color: var(--muted); margin-bottom: 0.85rem; }
+    #del-box-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.85rem; }
+    .del-cancel {
+      padding: 0.5rem 1rem; border-radius: 8px;
+      border: 1.5px solid var(--border); background: none;
+      font-size: 0.88rem; cursor: pointer; color: var(--muted);
+    }
+    .del-cancel:hover { background: var(--blue-light); color: var(--blue); }
+    .del-confirm {
+      padding: 0.5rem 1rem; border-radius: 8px;
+      border: none; background: #ef4444; color: #fff;
+      font-size: 0.88rem; font-weight: 600; cursor: pointer;
+    }
+    .del-confirm:hover { background: #dc2626; }
+
     /* ── Admin overlay ── */
     #admin-overlay {
       display: none;
@@ -700,6 +734,20 @@
   </div>
 </div>
 
+<!-- Delete confirm modal -->
+<div id="del-overlay" onclick="closeDelIfOutside(event)">
+  <div id="del-box">
+    <h3>წაშლის დადასტურება</h3>
+    <p>შეიყვანეთ ადმინ-ტოკენი წასაშლელად</p>
+    <input type="password" id="del-token-input" placeholder="ადმინ-ტოკენი" autocomplete="current-password" />
+    <div id="del-msg" style="font-size:.82rem;color:#dc2626;margin-top:.4rem;min-height:1.2rem"></div>
+    <div id="del-box-actions">
+      <button class="del-cancel" onclick="closeDel()">გაუქმება</button>
+      <button class="del-confirm" onclick="confirmDel()">წაშლა</button>
+    </div>
+  </div>
+</div>
+
 <script>
 function t(k) { return I18N[k] || k; }
 function httpErr(status) { return I18N["err" + status] || t("errorMsg"); }
@@ -888,7 +936,7 @@ function renderChat() {
   chat.scrollTop = chat.scrollHeight;
 }
 
-function deleteSession(id) {
+function _doDeleteSession(id) {
   _sessions = _sessions.filter(s => s.id !== id);
   if (_currentId === id) {
     _currentId = _sessions.length ? _sessions[0].id : null;
@@ -898,6 +946,10 @@ function deleteSession(id) {
   renderHistory();
   renderChat();
   renderHeader();
+}
+
+function deleteSession(id) {
+  _requireToken(() => _doDeleteSession(id));
 }
 
 function deleteCurrentChat() {
@@ -997,23 +1049,25 @@ function clearFileFilter() {
   updateFileChip();
 }
 
-async function deleteFile(doc_id) {
-  const delBtn = document.querySelector(`.file-del[onclick*="${doc_id}"]`);
-  if (delBtn) delBtn.innerHTML = '<span class="file-del-spinner"></span>';
-  try {
-    await fetch(`/documents/${doc_id}`, {
-      method: "DELETE",
-      headers: { "X-Admin-Token": _lastToken },
-    });
-  } catch {}
-  const s = _currentSession();
-  if (s) {
-    s.files = s.files.filter(f => f.doc_id !== doc_id);
-    if (s.activeDocId === doc_id) s.activeDocId = null;
-  }
-  _saveSessions();
-  renderFilesList();
-  updateFileChip();
+function deleteFile(doc_id) {
+  _requireToken(async (token) => {
+    const delBtn = document.querySelector(`.file-del[onclick*="${doc_id}"]`);
+    if (delBtn) delBtn.innerHTML = '<span class="file-del-spinner"></span>';
+    try {
+      await fetch(`/documents/${doc_id}`, {
+        method: "DELETE",
+        headers: { "X-Admin-Token": token },
+      });
+    } catch {}
+    const s = _currentSession();
+    if (s) {
+      s.files = s.files.filter(f => f.doc_id !== doc_id);
+      if (s.activeDocId === doc_id) s.activeDocId = null;
+    }
+    _saveSessions();
+    renderFilesList();
+    updateFileChip();
+  });
 }
 
 function _appendTyping() {
@@ -1121,6 +1175,39 @@ async function submitQuestion() {
 function openAdmin()  { document.getElementById("admin-overlay").classList.add("open"); }
 function closeAdmin() { document.getElementById("admin-overlay").classList.remove("open"); }
 function closeAdminIfOutside(e) { if (e.target === document.getElementById("admin-overlay")) closeAdmin(); }
+
+// ── Delete confirm modal ──────────────────────────────────────────────────────
+let _delCallback = null;
+
+function _requireToken(callback) {
+  _delCallback = callback;
+  document.getElementById("del-token-input").value = _lastToken || "";
+  document.getElementById("del-msg").textContent = "";
+  document.getElementById("del-overlay").classList.add("open");
+  setTimeout(() => document.getElementById("del-token-input").focus(), 50);
+}
+
+function closeDel() {
+  document.getElementById("del-overlay").classList.remove("open");
+  _delCallback = null;
+}
+
+function closeDelIfOutside(e) {
+  if (e.target === document.getElementById("del-overlay")) closeDel();
+}
+
+function confirmDel() {
+  const token = document.getElementById("del-token-input").value.trim();
+  if (!token) {
+    document.getElementById("del-msg").textContent = "ტოკენი სავალდებულოა";
+    return;
+  }
+  _lastToken = token;
+  try { localStorage.setItem(_LS_TOKEN, token); } catch {}
+  const cb = _delCallback;
+  closeDel();
+  if (cb) cb(token);
+}
 
 function switchTab(name) {
   document.getElementById("tab-file").style.display = name === "file" ? "" : "none";
