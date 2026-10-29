@@ -29,7 +29,8 @@ _API_URL = (
 )
 _DEFAULT_MODEL = "gemini-3.8-flash"
 _MAX_RETRIES = 2
-_BASE_DELAY = 2.0   # seconds; doubles each retry (2, 4 s) — keeps total wait under 10 s
+_BASE_DELAY = 2.0       # for 5xx errors: 2, 4 s
+_RATE_LIMIT_DELAY = 15.0  # for 429 errors: 15, 30 s — rate limits need a longer window
 
 
 class GeminiClient(LLMClient):
@@ -128,6 +129,7 @@ class GeminiClient(LLMClient):
 
     def _post_with_retry(self, url: str, body: dict) -> dict:
         delay = _BASE_DELAY
+        rl_delay = _RATE_LIMIT_DELAY
         for attempt in range(_MAX_RETRIES + 1):
             try:
                 with httpx.Client(timeout=60.0) as client:
@@ -144,8 +146,8 @@ class GeminiClient(LLMClient):
             if r.status_code == 429:
                 if attempt == _MAX_RETRIES:
                     raise LLMRateLimitError("Gemini rate limit exceeded")
-                time.sleep(delay)
-                delay *= 2
+                time.sleep(rl_delay)
+                rl_delay *= 2  # 15, 30 s
                 continue
             if r.status_code >= 500:
                 if attempt == _MAX_RETRIES:
