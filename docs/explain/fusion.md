@@ -56,28 +56,3 @@ k prevents rank-1 from having infinite advantage over rank-2.
 
 O(Σ |list_i|) to accumulate scores + O(R log R) to sort, where R = total unique docs.
 Typically a few hundred documents per list → essentially instant.
-
-## 5 questions an interviewer would ask
-
-**Q1: Why use RRF instead of just taking the top results from the better retriever?**
-Because the two retrievers complement each other: dense search is better for semantic
-similarity, BM25 is better for rare keywords and exact matches. RRF keeps the best of
-both. A document missed by one but found by the other still makes it into the output.
-
-**Q2: What happens to a document that only appears in one list?**
-It still gets a score (1/(k + rank)), so it appears in the output. It just scores lower
-than a document that appears in both lists at similar ranks.
-
-**Q3: Why is k=60 a good default?**
-It comes from the original RRF paper by Cormack, Clarke and Buettcher (2009), who found
-it empirically. It smooths out rank differences without completely ignoring them.
-
-**Q4: Does RRF work with three or more lists?**
-Yes — the formula just sums over all lists. In this project we could fuse dense, BM25,
-and (in future) a title-match list. The implementation loops over however many lists
-are passed in.
-
-**Q5: What's the difference between RRF and Borda count?**
-Borda count assigns score = (n - rank) for a list of n items, then sums.
-RRF uses 1/(k + rank), which has a natural floor and handles lists of different
-lengths without normalisation. RRF is more robust when list lengths vary.
