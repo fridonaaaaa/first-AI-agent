@@ -34,11 +34,10 @@ _SUFFICIENCY_SYSTEM = (
     "You are a fact-checker. You will be given a question and up to 5 passages "
     "from a knowledge base.\n"
     "Reply with exactly one word:\n"
-    "YES — if the passages contain enough information to give a specific, factual "
-    "answer to the question.\n"
-    "NO  — if the passages do NOT contain the information needed to answer the "
-    "question (e.g. the question is about current events, personal data, or a fact "
-    "simply not mentioned in the passages).\n"
+    "YES — if ANY of the passages contain information relevant to the question, "
+    "even partially.\n"
+    "NO  — ONLY if ALL passages are completely unrelated to the question and share "
+    "no topic, entity, or fact with it whatsoever.\n"
     "Reply YES or NO only. No explanation."
 )
 
