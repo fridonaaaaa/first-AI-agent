@@ -9,18 +9,19 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --green:      #16a34a;
-      --green-h:    #15803d;
-      --green-light:#dcfce7;
-      --sidebar-w:  260px;
-      --bg:         #f6f8f5;
-      --surface:    #ffffff;
-      --border:     #e2e8e0;
-      --text:       #111827;
-      --muted:      #6b7280;
-      --user-bg:    #16a34a;
-      --ai-bg:      #ffffff;
-      --radius:     12px;
+      --blue:        #2563EB;
+      --blue-h:      #1d4ed8;
+      --blue-light:  #EEF2FF;
+      --blue-mid:    #DBEAFE;
+      --sidebar-w:   272px;
+      --bg:          #ffffff;
+      --sidebar-bg:  #F0F4FF;
+      --border:      #E2E8F0;
+      --text:        #1E293B;
+      --muted:       #64748B;
+      --user-bg:     #2563EB;
+      --ai-bg:       #F1F5F9;
+      --radius:      14px;
     }
 
     html, body { height: 100%; }
@@ -37,83 +38,155 @@
     /* ── Sidebar ── */
     #sidebar {
       width: var(--sidebar-w);
-      background: #1a2e1a;
-      color: #d1fae5;
+      background: var(--sidebar-bg);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
       overflow: hidden;
+      border-right: 1px solid var(--border);
     }
 
     .sidebar-header {
-      padding: 1rem 1rem 0.75rem;
-      border-bottom: 1px solid rgba(255,255,255,.1);
+      padding: 1.25rem 1rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .sidebar-logo {
+      width: 38px; height: 38px;
+      background: var(--blue);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
     }
     .sidebar-header h1 {
-      font-size: 0.95rem;
+      font-size: 1rem;
       font-weight: 700;
-      color: #fff;
-      line-height: 1.3;
-    }
-    .sidebar-header p {
-      font-size: 0.72rem;
-      color: #86efac;
-      margin-top: 0.2rem;
+      color: var(--text);
     }
 
     .new-chat-btn {
-      margin: 0.75rem 0.75rem 0;
-      padding: 0.55rem 1rem;
-      background: rgba(255,255,255,.1);
+      margin: 0 0.75rem 0.5rem;
+      padding: 0.65rem 1rem;
+      background: var(--blue);
       color: #fff;
-      border: 1px solid rgba(255,255,255,.2);
-      border-radius: 8px;
-      font-size: 0.85rem;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
       cursor: pointer;
-      width: calc(100% - 1.5rem);
-      text-align: left;
       display: flex;
       align-items: center;
+      justify-content: center;
       gap: 0.5rem;
       transition: background .15s;
     }
-    .new-chat-btn:hover { background: rgba(255,255,255,.18); }
+    .new-chat-btn:hover { background: var(--blue-h); }
+
+    .history-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--muted);
+      padding: 0.75rem 1rem 0.3rem;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
 
     #history-list {
       flex: 1;
       overflow-y: auto;
-      padding: 0.5rem 0.5rem 1rem;
+      padding: 0.25rem 0.5rem 0.5rem;
     }
     .history-item {
-      padding: 0.5rem 0.75rem;
-      border-radius: 6px;
-      font-size: 0.82rem;
-      color: #d1fae5;
+      padding: 0.55rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: var(--muted);
       cursor: pointer;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       transition: background .1s;
+      border-left: 3px solid transparent;
     }
-    .history-item:hover { background: rgba(255,255,255,.1); }
-    .history-item.active { background: rgba(255,255,255,.15); color: #fff; }
+    .history-item:hover { background: rgba(37,99,235,.07); }
+    .history-item.active {
+      background: var(--blue-light);
+      color: var(--blue);
+      border-left-color: var(--blue);
+      font-weight: 600;
+    }
+    .history-item svg { flex-shrink: 0; opacity: 0.6; }
+    .history-item.active svg { opacity: 1; }
 
     .sidebar-footer {
-      padding: 0.75rem;
-      border-top: 1px solid rgba(255,255,255,.1);
+      padding: 0.85rem 1rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
+    .online-dot {
+      width: 9px; height: 9px;
+      background: #22c55e;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .online-label { font-size: 0.82rem; color: var(--muted); }
     .admin-link {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background .1s, color .1s;
+      border: 1px solid var(--border);
+      background: white;
+    }
+    .admin-link:hover { background: var(--blue-light); color: var(--blue); }
+
+    /* ── Uploaded files in sidebar ── */
+    .sidebar-section-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--muted);
+      padding: 0.6rem 1rem 0.2rem;
+    }
+    .file-item {
+      padding: 0.45rem 0.75rem;
+      border-radius: 8px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      cursor: pointer;
       display: flex;
       align-items: center;
       gap: 0.4rem;
-      padding: 0.45rem 0.75rem;
-      border-radius: 6px;
-      font-size: 0.82rem;
-      color: #86efac;
-      cursor: pointer;
       transition: background .1s;
+      margin: 0 0.25rem;
     }
-    .admin-link:hover { background: rgba(255,255,255,.1); }
+    .file-item:hover { background: rgba(37,99,235,.07); }
+    .file-item.active { background: var(--blue-light); color: var(--blue); font-weight: 600; }
+    .file-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .file-del {
+      background: none; border: none; cursor: pointer;
+      color: var(--muted); font-size: 0.78rem; line-height: 1;
+      padding: 0 0 0 0.3rem; flex-shrink: 0; opacity: 0.5;
+      transition: opacity .1s, color .1s;
+    }
+    .file-del:hover { opacity: 1; color: #ef4444; }
+    .file-del-spinner {
+      width: 10px; height: 10px; border-radius: 50%;
+      border: 1.5px solid rgba(100,116,139,.3);
+      border-top-color: var(--muted);
+      animation: spin .7s linear infinite;
+      display: inline-block;
+    }
 
     /* ── Main area ── */
     #main {
@@ -122,16 +195,50 @@
       flex-direction: column;
       min-width: 0;
       overflow: hidden;
+      background: #fff;
     }
+
+    /* ── Chat header ── */
+    #chat-header {
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      min-height: 62px;
+    }
+    #chat-header-info h2 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    #chat-header-info p {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+    #delete-chat-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 0.4rem;
+      border-radius: 6px;
+      transition: background .1s, color .1s;
+      display: flex;
+      align-items: center;
+    }
+    #delete-chat-btn:hover { background: #FEE2E2; color: #ef4444; }
 
     /* ── Chat messages ── */
     #chat-area {
       flex: 1;
       overflow-y: auto;
-      padding: 1.5rem 1rem 1rem;
+      padding: 1.5rem 1.25rem 1rem;
       display: flex;
       flex-direction: column;
-      gap: 1.2rem;
+      gap: 1.5rem;
     }
 
     /* Welcome screen */
@@ -146,9 +253,9 @@
       color: var(--muted);
     }
     #welcome .logo {
-      width: 56px; height: 56px;
-      background: var(--green);
-      border-radius: 16px;
+      width: 60px; height: 60px;
+      background: var(--blue);
+      border-radius: 18px;
       display: flex; align-items: center; justify-content: center;
       margin: 0 auto 1rem;
     }
@@ -159,67 +266,57 @@
     .message-row {
       display: flex;
       gap: 0.75rem;
-      max-width: 760px;
+      max-width: 780px;
       width: 100%;
       margin: 0 auto;
+      align-items: flex-end;
     }
     .message-row.user { flex-direction: row-reverse; }
 
     .avatar {
-      width: 32px; height: 32px;
+      width: 36px; height: 36px;
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      font-size: 0.8rem; font-weight: 700;
       flex-shrink: 0;
-      margin-top: 2px;
     }
-    .avatar.user-av { background: var(--green); color: #fff; }
-    .avatar.ai-av   { background: #1a2e1a; color: #86efac; }
+    .avatar.user-av { background: #CBD5E1; }
+    .avatar.ai-av   { background: var(--blue); }
 
     .bubble {
       padding: 0.85rem 1.1rem;
       border-radius: var(--radius);
       font-size: 0.93rem;
       line-height: 1.65;
-      max-width: calc(100% - 48px);
+      max-width: calc(100% - 52px);
     }
     .bubble.user-bubble {
-      background: var(--green);
+      background: var(--blue);
       color: #fff;
       border-bottom-right-radius: 4px;
     }
     .bubble.ai-bubble {
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: var(--ai-bg);
       border-bottom-left-radius: 4px;
-      box-shadow: 0 1px 3px rgba(0,0,0,.06);
     }
-    .bubble.ai-bubble.abstained {
-      background: #fffbeb;
-      border-color: #fcd34d;
-    }
-    .bubble.ai-bubble.error {
-      background: #fff1f2;
-      border-color: #fca5a5;
-    }
+    .bubble.ai-bubble.abstained { background: #FFFBEB; }
+    .bubble.ai-bubble.error     { background: #FFF1F2; }
 
-    /* Answer text */
     .answer-text { white-space: pre-wrap; }
 
-    /* Details sections inside AI bubble */
-    .bubble-meta {
-      font-size: 0.75rem;
+    .msg-time {
+      font-size: 0.72rem;
       color: var(--muted);
-      margin-top: 0.6rem;
-      padding-top: 0.6rem;
-      border-top: 1px solid var(--border);
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
+      margin-top: 0.3rem;
+      padding: 0 0.25rem;
     }
+    .message-row.user .msg-time { text-align: right; }
 
+    .msg-wrapper { display: flex; flex-direction: column; max-width: calc(100% - 52px); }
+    .message-row.user .msg-wrapper { align-items: flex-end; }
+
+    /* Details inside AI bubble */
     details {
-      margin-top: 0.6rem;
+      margin-top: 0.65rem;
       border-top: 1px solid var(--border);
       padding-top: 0.6rem;
     }
@@ -232,12 +329,12 @@
       cursor: pointer;
       user-select: none;
     }
-    summary:hover { color: var(--green); }
+    summary:hover { color: var(--blue); }
 
     .tags { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.5rem; }
     .tag {
-      background: var(--green-light);
-      color: var(--green);
+      background: var(--blue-mid);
+      color: var(--blue);
       border-radius: 20px;
       padding: 0.15rem 0.65rem;
       font-size: 0.78rem;
@@ -245,7 +342,7 @@
     }
 
     .source-card {
-      background: var(--bg);
+      background: #fff;
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 0.6rem 0.8rem;
@@ -257,15 +354,6 @@
       justify-content: space-between;
       align-items: center;
       margin-bottom: 0.25rem;
-    }
-    .source-id { font-family: monospace; font-size: 0.71rem; color: var(--muted); }
-    .score-pill {
-      background: var(--green-light);
-      color: var(--green);
-      border-radius: 20px;
-      padding: 0.1rem 0.5rem;
-      font-size: 0.71rem;
-      font-weight: 600;
     }
     .source-text { color: #374151; line-height: 1.5; }
 
@@ -290,9 +378,9 @@
     .verdict-agree    { background: #dcfce7; color: #166534; }
 
     /* Typing indicator */
-    .typing-indicator { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+    .typing-indicator { display: flex; gap: 5px; align-items: center; padding: 4px 0; }
     .typing-indicator span {
-      width: 7px; height: 7px;
+      width: 8px; height: 8px;
       background: var(--muted);
       border-radius: 50%;
       animation: bounce .9s ease-in-out infinite;
@@ -306,24 +394,54 @@
 
     /* ── Input bar ── */
     #input-bar {
-      padding: 0.75rem 1rem 1rem;
-      border-top: 1px solid var(--border);
-      background: var(--bg);
+      padding: 0.75rem 1.25rem 1rem;
+      background: #fff;
+    }
+    #file-filter-chip {
+      display: none;
+      max-width: 780px;
+      margin: 0 auto 0.4rem;
+      padding: 0.3rem 0.65rem;
+      background: var(--blue-light);
+      color: var(--blue);
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      align-items: center;
+      gap: 0.4rem;
+      width: fit-content;
+    }
+    #file-filter-chip.visible { display: flex; }
+    #file-filter-chip button {
+      background: none; border: none; cursor: pointer;
+      color: var(--blue); font-size: 0.9rem; line-height: 1; padding: 0;
     }
     .input-wrap {
-      max-width: 760px;
+      max-width: 780px;
       margin: 0 auto;
       display: flex;
       align-items: flex-end;
       gap: 0.5rem;
-      background: var(--surface);
+      background: #fff;
       border: 1.5px solid var(--border);
-      border-radius: var(--radius);
-      padding: 0.5rem 0.5rem 0.5rem 1rem;
-      box-shadow: 0 2px 8px rgba(0,0,0,.06);
+      border-radius: 14px;
+      padding: 0.5rem 0.5rem 0.5rem 0.65rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,.05);
       transition: border-color .15s;
     }
-    .input-wrap:focus-within { border-color: var(--green); }
+    .input-wrap:focus-within { border-color: var(--blue); }
+    #attach-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
+      transition: color .1s;
+    }
+    #attach-btn:hover { color: var(--blue); }
     #question {
       flex: 1;
       border: none;
@@ -336,20 +454,22 @@
       min-height: 24px;
       line-height: 1.5;
       padding: 2px 0;
+      color: var(--text);
     }
+    #question::placeholder { color: #94A3B8; }
     #send-btn {
-      width: 36px; height: 36px;
-      background: var(--green);
+      width: 40px; height: 40px;
+      background: var(--blue);
       color: #fff;
       border: none;
-      border-radius: 8px;
+      border-radius: 50%;
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
       transition: background .15s;
     }
-    #send-btn:hover:not(:disabled) { background: var(--green-h); }
-    #send-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+    #send-btn:hover:not(:disabled) { background: var(--blue-h); }
+    #send-btn:disabled { background: #CBD5E1; cursor: not-allowed; }
     #send-btn svg { pointer-events: none; }
 
     /* ── Admin overlay ── */
@@ -363,12 +483,12 @@
     }
     #admin-overlay.open { display: flex; }
     #admin-box {
-      background: var(--surface);
+      background: #fff;
       border-radius: var(--radius);
       padding: 1.6rem;
       width: 460px;
       max-width: 95vw;
-      box-shadow: 0 8px 32px rgba(0,0,0,.2);
+      box-shadow: 0 8px 32px rgba(0,0,0,.15);
     }
     .admin-header {
       display: flex;
@@ -397,17 +517,17 @@
       font-family: inherit;
       transition: border-color .15s;
     }
-    input:focus, #admin-box textarea:focus { outline: none; border-color: var(--green); }
+    input:focus, #admin-box textarea:focus { outline: none; border-color: var(--blue); }
     .upload-btn {
       padding: 0.6rem 1.4rem;
-      background: var(--green); color: #fff;
+      background: var(--blue); color: #fff;
       border: none; border-radius: 8px;
       font-size: 0.9rem; font-weight: 600;
       cursor: pointer; transition: background .15s;
       display: inline-flex; align-items: center; gap: 0.5rem;
     }
-    .upload-btn:hover { background: var(--green-h); }
-    .upload-btn:disabled { background: #9ca3af; cursor: not-allowed; }
+    .upload-btn:hover { background: var(--blue-h); }
+    .upload-btn:disabled { background: #CBD5E1; cursor: not-allowed; }
 
     @keyframes spin { to { transform: rotate(360deg); } }
     .spin-icon {
@@ -416,13 +536,6 @@
       border-top-color: #fff;
       animation: spin .7s linear infinite;
       flex-shrink: 0;
-    }
-    .file-del-spinner {
-      width: 10px; height: 10px; border-radius: 50%;
-      border: 1.5px solid rgba(134,239,172,.3);
-      border-top-color: #86efac;
-      animation: spin .7s linear infinite;
-      display: inline-block;
     }
     #admin-msg { margin-top: 0.6rem; font-size: 0.85rem; font-weight: 500; }
     #admin-msg.ok  { color: #16a34a; }
@@ -435,7 +548,7 @@
       font-size: 0.82rem; font-weight: 600; cursor: pointer;
       color: var(--muted); transition: all .15s;
     }
-    .admin-tab.active { background: var(--green); color: #fff; border-color: var(--green); }
+    .admin-tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
 
     .drop-zone {
       border: 2px dashed var(--border); border-radius: 10px;
@@ -443,66 +556,9 @@
       transition: border-color .15s, background .15s;
     }
     .drop-zone:hover, .drop-zone.dragover {
-      border-color: var(--green); background: var(--green-light);
+      border-color: var(--blue); background: var(--blue-light);
     }
     .drop-zone p { font-size: 0.82rem; color: var(--muted); margin-top: 0.5rem; }
-
-    /* ── Uploaded files in sidebar ── */
-    .sidebar-section-label {
-      font-size: 0.68rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .07em;
-      color: #86efac;
-      opacity: 0.7;
-      padding: 0.8rem 0.75rem 0.2rem;
-    }
-    .file-item {
-      padding: 0.45rem 0.75rem;
-      border-radius: 6px;
-      font-size: 0.8rem;
-      color: #d1fae5;
-      cursor: pointer;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-      transition: background .1s;
-    }
-    .file-item:hover { background: rgba(255,255,255,.1); }
-    .file-item.active { background: rgba(255,255,255,.18); color: #fff; font-weight: 600; }
-    .file-item svg { flex-shrink: 0; opacity: 0.65; }
-    .file-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .file-del {
-      background: none; border: none; cursor: pointer;
-      color: #86efac; font-size: 0.78rem; line-height: 1;
-      padding: 0 0 0 0.3rem; flex-shrink: 0; opacity: 0.5;
-      transition: opacity .1s, color .1s;
-    }
-    .file-del:hover { opacity: 1; color: #fca5a5; }
-
-    /* active-file chip above input */
-    #file-filter-chip {
-      display: none;
-      max-width: 760px;
-      margin: 0 auto 0.4rem;
-      padding: 0.3rem 0.65rem;
-      background: var(--green-light);
-      color: var(--green);
-      border-radius: 20px;
-      font-size: 0.78rem;
-      font-weight: 600;
-      align-items: center;
-      gap: 0.4rem;
-      width: fit-content;
-    }
-    #file-filter-chip.visible { display: flex; }
-    #file-filter-chip button {
-      background: none; border: none; cursor: pointer;
-      color: var(--green); font-size: 0.9rem; line-height: 1; padding: 0;
-    }
   </style>
 </head>
 <body>
@@ -510,13 +566,21 @@
 <!-- Sidebar -->
 <div id="sidebar">
   <div class="sidebar-header">
+    <div class="sidebar-logo">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/>
+        <path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="12" y1="16" x2="12" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/>
+      </svg>
+    </div>
     <h1 id="app-title"></h1>
-    <p id="app-subtitle"></p>
   </div>
+
   <button class="new-chat-btn" onclick="newChat()">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     ახალი საუბარი
   </button>
+
+  <div class="history-label">ჩეთის ისტორია</div>
   <div id="history-list"></div>
 
   <!-- Uploaded files section -->
@@ -526,19 +590,34 @@
   </div>
 
   <div class="sidebar-footer">
+    <div class="online-dot"></div>
+    <span class="online-label">Online</span>
     <div class="admin-link" onclick="openAdmin()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-      ფაილის მიმაგრება
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+      ფაილი
     </div>
   </div>
 </div>
 
 <!-- Main chat -->
 <div id="main">
+  <div id="chat-header">
+    <div id="chat-header-info">
+      <h2 id="chat-header-title">ახალი საუბარი</h2>
+      <p id="chat-header-sub"></p>
+    </div>
+    <button id="delete-chat-btn" onclick="deleteCurrentChat()" title="საუბრის წაშლა">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+        <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+      </svg>
+    </button>
+  </div>
+
   <div id="chat-area">
     <div id="welcome">
       <div class="logo">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
       </div>
@@ -554,9 +633,14 @@
       <button onclick="clearFileFilter()" title="ფილტრის გაუქმება">✕</button>
     </div>
     <div class="input-wrap">
-      <textarea id="question" rows="1" placeholder=""></textarea>
+      <button id="attach-btn" onclick="openAdmin()" title="ფაილის მიმაგრება">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+        </svg>
+      </button>
+      <textarea id="question" rows="1" placeholder="დასვით კითხვა..."></textarea>
       <button id="send-btn" onclick="submitQuestion()" title="გაგზავნა">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
         </svg>
       </button>
@@ -571,31 +655,23 @@
       <h2 id="admin-title"></h2>
       <button class="close-btn" onclick="closeAdmin()">✕</button>
     </div>
-
-    <!-- Token (shared by both tabs) -->
     <div class="form-row">
       <label class="form-label" id="token-label"></label>
       <input type="password" id="admin-token" autocomplete="current-password" />
     </div>
-
-    <!-- Tabs -->
     <div class="admin-tabs">
       <button class="admin-tab active" onclick="switchTab('file')">ფაილის ატვირთვა</button>
       <button class="admin-tab" onclick="switchTab('text')">ტექსტის ჩასმა</button>
     </div>
-
-    <!-- File upload tab -->
     <div id="tab-file">
       <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         <p id="drop-label">PDF, DOCX, TXT, MD, HTML — max 50 MB</p>
-        <p id="drop-filename" style="color:#16a34a;font-weight:600;margin-top:.3rem"></p>
+        <p id="drop-filename" style="color:var(--blue);font-weight:600;margin-top:.3rem"></p>
       </div>
       <input type="file" id="file-input" accept=".pdf,.txt,.md,.html,.htm,.jsonl" style="display:none" onchange="onFileSelected(this)" />
       <button class="upload-btn" style="margin-top:.75rem" onclick="uploadFile()" id="file-upload-btn">ატვირთვა</button>
     </div>
-
-    <!-- Paste text tab -->
     <div id="tab-text" style="display:none">
       <div class="form-row">
         <label class="form-label" id="doc-title-label"></label>
@@ -611,21 +687,20 @@
       </div>
       <button class="upload-btn" onclick="uploadDocument()" id="upload-btn"></button>
     </div>
-
     <div id="admin-msg"></div>
   </div>
 </div>
 
 <script>
-// ── i18n ─────────────────────────────────────────────────────────────────────
 function t(k) { return I18N[k] || k; }
 function httpErr(status) { return I18N["err" + status] || t("errorMsg"); }
 
 function applyI18n() {
   document.title                                           = t("appTitle");
-  document.getElementById("app-title").textContent        = t("appTitle");
-  document.getElementById("app-subtitle").textContent     = t("appSubtitle");
-  document.getElementById("question").placeholder         = t("questionPlaceholder");
+  document.getElementById("app-title").textContent        = "AI Assistant";
+  document.getElementById("question").placeholder         = "დასვით კითხვა...";
+  document.getElementById("welcome-title").textContent    = t("appTitle");
+  document.getElementById("welcome-sub").textContent      = t("questionPlaceholder");
   document.getElementById("admin-title").textContent      = t("uploadTitle");
   document.getElementById("token-label").textContent      = t("tokenLabel");
   document.getElementById("doc-title-label").textContent  = t("docTitleLabel");
@@ -634,7 +709,6 @@ function applyI18n() {
   document.getElementById("upload-btn").textContent       = t("uploadButton");
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function escHtml(s) {
   return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
@@ -645,16 +719,16 @@ function uuidv4() {
   );
 }
 
+function _nowTime() {
+  return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 // ── Session state ────────────────────────────────────────────────────────────
-// Each session: { id, label, messages: [{role, text?, data?}], files: [{doc_id, name}], activeDocId }
-// role = "user" → {role, text}
-// role = "ai"   → {role, data}
 let _sessions = [];
 let _currentId = null;
 let _lastToken = "";
 
 const _LS_SESSIONS = "ai_sessions_v2";
-const _LS_CURRENT  = "ai_current_session";
 const _LS_TOKEN    = "ai_token";
 
 function _currentSession() {
@@ -662,14 +736,9 @@ function _currentSession() {
 }
 
 function _saveSessions() {
-  // Cap each session to 20 messages to avoid blowing localStorage quota
-  const slim = _sessions.map(s => ({
-    ...s,
-    messages: s.messages.slice(-20),
-  }));
+  const slim = _sessions.map(s => ({ ...s, messages: s.messages.slice(-20) }));
   try {
     localStorage.setItem(_LS_SESSIONS, JSON.stringify(slim));
-    localStorage.setItem(_LS_CURRENT, _currentId || "");
     if (_lastToken) localStorage.setItem(_LS_TOKEN, _lastToken);
   } catch {}
 }
@@ -680,8 +749,6 @@ function _loadSessions() {
     if (raw) _sessions = JSON.parse(raw);
     _lastToken = localStorage.getItem(_LS_TOKEN) || "";
   } catch { _sessions = []; }
-
-  // Always start fresh on every page load — create a new session immediately.
   _createSession();
 }
 
@@ -699,25 +766,35 @@ function _createSession() {
   return s;
 }
 
+// ── Header rendering ──────────────────────────────────────────────────────────
+function renderHeader() {
+  const s = _currentSession();
+  const title = document.getElementById("chat-header-title");
+  const sub   = document.getElementById("chat-header-sub");
+  if (s) {
+    title.textContent = s.label;
+    const count = s.messages.length;
+    sub.textContent = count ? `${count} შეტყობინება` : "";
+  }
+}
+
 // ── Chat rendering ────────────────────────────────────────────────────────────
-function _welcomeHTML() {
-  return `<div id="welcome" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:2rem;color:var(--muted)">
-    <div class="logo"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
-    <h2 style="font-size:1.3rem;color:var(--text);margin-bottom:.4rem">${t("appTitle")}</h2>
-    <p style="font-size:.9rem;max-width:360px">${t("questionPlaceholder")}</p>
-  </div>`;
-}
-
-function _userRowHTML(text) {
+function _userRowHTML(text, time) {
   return `<div class="message-row user">
-    <div class="avatar user-av">U</div>
-    <div class="bubble user-bubble">${escHtml(text)}</div>
+    <div class="avatar user-av">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+      </svg>
+    </div>
+    <div class="msg-wrapper">
+      <div class="bubble user-bubble">${escHtml(text)}</div>
+      <div class="msg-time">${time || ""}</div>
+    </div>
   </div>`;
 }
 
-function _aiBubbleHTML(data) {
+function _aiBubbleHTML(data, time) {
   const cls = data._error ? "error" : data.abstained ? "abstained" : "";
-  const lang = (data.language === "georgian") ? t("langGeorgian") : t("langEnglish");
   const cleanAnswer = data.answer.replace(/\s*\[[^\]]*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[^\]]*\]/gi, '');
   let inner = `<div class="answer-text">${escHtml(cleanAnswer)}</div>`;
   if (!data._error) {
@@ -727,20 +804,38 @@ function _aiBubbleHTML(data) {
         sources.map(s => {
           const docName = s.title ? escHtml(s.title) : `<span style="font-family:monospace;font-size:.71rem;color:var(--muted)">${escHtml(s.chunk_id.slice(0,8))}</span>`;
           return `<div class="source-card">
-            <div class="source-header">
-              <span style="font-weight:600;font-size:.82rem">${docName}</span>
-            </div>
+            <div class="source-header"><span style="font-weight:600;font-size:.82rem">${docName}</span></div>
             <div class="source-text">${escHtml(s.text.slice(0,280))}${s.text.length>280?"…":""}</div>
           </div>`;
         }).join("")
       }</details>`;
-    } else {
-      inner += `<div style="font-size:.8rem;color:var(--muted);margin-top:.5rem">${t("noSources")}</div>`;
+    }
+    const conflicts = (data.conflicts || []).filter(c => c.verdict === "conflict");
+    if (conflicts.length) {
+      inner += `<details><summary>${t("conflictsTitle")} (${conflicts.length})</summary>${
+        conflicts.map(c => `<div class="conflict-card">
+          <span class="verdict-pill verdict-conflict">${t("conflictBadge")}</span>${escHtml(c.reason)}
+        </div>`).join("")
+      }</details>`;
+    }
+    const subs = data.sub_queries || [];
+    if (subs.length > 1) {
+      inner += `<details><summary>${t("subQueriesTitle")}</summary>
+        <div class="tags">${subs.map(q => `<span class="tag">${escHtml(q)}</span>`).join("")}</div>
+      </details>`;
     }
   }
   return `<div class="message-row">
-    <div class="avatar ai-av">AI</div>
-    <div class="bubble ai-bubble ${cls}">${inner}</div>
+    <div class="avatar ai-av">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/>
+        <path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="12" y1="16" x2="12" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/>
+      </svg>
+    </div>
+    <div class="msg-wrapper">
+      <div class="bubble ai-bubble ${cls}">${inner}</div>
+      <div class="msg-time">${time || ""}</div>
+    </div>
   </div>`;
 }
 
@@ -748,14 +843,18 @@ function renderChat() {
   const s = _currentSession();
   const chat = document.getElementById("chat-area");
   if (!s || s.messages.length === 0) {
-    chat.innerHTML = _welcomeHTML();
+    chat.innerHTML = `<div id="welcome">
+      <div class="logo"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+      <h2 id="welcome-title">${t("appTitle")}</h2>
+      <p>${t("questionPlaceholder")}</p>
+    </div>`;
     return;
   }
   chat.innerHTML = "";
   for (const m of s.messages) {
     const div = document.createElement("div");
-    if (m.role === "user") div.innerHTML = _userRowHTML(m.text);
-    else                   div.innerHTML = _aiBubbleHTML(m.data);
+    if (m.role === "user") div.innerHTML = _userRowHTML(m.text, m.time);
+    else                   div.innerHTML = _aiBubbleHTML(m.data, m.time);
     chat.appendChild(div.firstElementChild);
   }
   chat.scrollTop = chat.scrollHeight;
@@ -770,6 +869,12 @@ function deleteSession(id) {
   _saveSessions();
   renderHistory();
   renderChat();
+  renderHeader();
+}
+
+function deleteCurrentChat() {
+  const s = _currentSession();
+  if (s) deleteSession(s.id);
 }
 
 function renderHistory() {
@@ -778,11 +883,13 @@ function renderHistory() {
   _sessions.forEach(s => {
     const el = document.createElement("div");
     el.className = "history-item" + (s.id === _currentId ? " active" : "");
-    el.innerHTML = `<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${escHtml(s.label)}">${escHtml(s.label)}</span>
-      <button onclick="event.stopPropagation();deleteSession('${s.id}')" title="წაშლა" style="background:none;border:none;color:rgba(255,255,255,.5);cursor:pointer;font-size:.85rem;padding:0 2px;line-height:1;flex-shrink:0">✕</button>`;
-    el.style.display = "flex";
-    el.style.alignItems = "center";
-    el.style.gap = "4px";
+    el.innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+      </svg>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.label)}</span>
+      <button onclick="event.stopPropagation();deleteSession('${s.id}')" title="წაშლა"
+        style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1;flex-shrink:0;opacity:0.6">✕</button>`;
     el.onclick = () => switchSession(s.id);
     list.appendChild(el);
   });
@@ -824,11 +931,11 @@ function updateFileChip() {
   }
 }
 
-// ── Session actions ───────────────────────────────────────────────────────────
 function newChat() {
   _createSession();
   renderHistory();
   renderChat();
+  renderHeader();
   renderFilesList();
   updateFileChip();
 }
@@ -839,11 +946,11 @@ function switchSession(id) {
   _saveSessions();
   renderHistory();
   renderChat();
+  renderHeader();
   renderFilesList();
   updateFileChip();
 }
 
-// ── File actions ──────────────────────────────────────────────────────────────
 function toggleFileFilter(doc_id) {
   const s = _currentSession();
   if (!s) return;
@@ -865,14 +972,12 @@ function clearFileFilter() {
 async function deleteFile(doc_id) {
   const delBtn = document.querySelector(`.file-del[onclick*="${doc_id}"]`);
   if (delBtn) delBtn.innerHTML = '<span class="file-del-spinner"></span>';
-
   try {
     await fetch(`/documents/${doc_id}`, {
       method: "DELETE",
       headers: { "X-Admin-Token": _lastToken },
     });
   } catch {}
-
   const s = _currentSession();
   if (s) {
     s.files = s.files.filter(f => f.doc_id !== doc_id);
@@ -883,13 +988,19 @@ async function deleteFile(doc_id) {
   updateFileChip();
 }
 
-// ── Submit ────────────────────────────────────────────────────────────────────
 function _appendTyping() {
   const chat = document.getElementById("chat-area");
   const row = document.createElement("div");
   row.className = "message-row"; row.id = "typing-row";
-  row.innerHTML = `<div class="avatar ai-av">AI</div>
-    <div class="bubble ai-bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>`;
+  row.innerHTML = `<div class="avatar ai-av">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/>
+      <path d="M12 7v4"/>
+    </svg>
+  </div>
+  <div class="msg-wrapper">
+    <div class="bubble ai-bubble"><div class="typing-indicator"><span></span><span></span><span></span></div></div>
+  </div>`;
   chat.appendChild(row);
   chat.scrollTop = chat.scrollHeight;
 }
@@ -913,24 +1024,23 @@ async function submitQuestion() {
   ta.value = "";
   ta.style.height = "";
 
-  // Update session label on first message
+  const time = _nowTime();
   if (s.messages.length === 0) {
     s.label = q.length > 40 ? q.slice(0, 40) + "…" : q;
   }
-  s.messages.push({ role: "user", text: q });
+  s.messages.push({ role: "user", text: q, time });
   _saveSessions();
 
-  // Show user bubble and typing indicator
   const chat = document.getElementById("chat-area");
-  // Remove welcome screen if present
   const w = document.getElementById("welcome");
   if (w) w.remove();
   const uDiv = document.createElement("div");
-  uDiv.innerHTML = _userRowHTML(q);
+  uDiv.innerHTML = _userRowHTML(q, time);
   chat.appendChild(uDiv.firstElementChild);
   chat.scrollTop = chat.scrollHeight;
   _appendTyping();
   renderHistory();
+  renderHeader();
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 240000);
@@ -947,24 +1057,27 @@ async function submitQuestion() {
     const data = await res.json();
     _removeTyping();
 
+    const aiTime = _nowTime();
     const aiData = !res.ok
       ? { answer: httpErr(res.status), _error: true, steps_used: 0 }
       : data;
 
-    s.messages.push({ role: "ai", data: aiData });
+    s.messages.push({ role: "ai", data: aiData, time: aiTime });
     _saveSessions();
 
     const aDiv = document.createElement("div");
-    aDiv.innerHTML = _aiBubbleHTML(aiData);
+    aDiv.innerHTML = _aiBubbleHTML(aiData, aiTime);
     chat.appendChild(aDiv.firstElementChild);
     chat.scrollTop = chat.scrollHeight;
+    renderHeader();
   } catch (e) {
     _removeTyping();
+    const aiTime = _nowTime();
     const aiData = { answer: e.name === "AbortError" ? t("timeoutMsg") : t("errorMsg"), _error: true, steps_used: 0 };
-    s.messages.push({ role: "ai", data: aiData });
+    s.messages.push({ role: "ai", data: aiData, time: aiTime });
     _saveSessions();
     const aDiv = document.createElement("div");
-    aDiv.innerHTML = _aiBubbleHTML(aiData);
+    aDiv.innerHTML = _aiBubbleHTML(aiData, aiTime);
     chat.appendChild(aDiv.firstElementChild);
     chat.scrollTop = chat.scrollHeight;
   } finally {
@@ -974,7 +1087,6 @@ async function submitQuestion() {
   }
 }
 
-// ── Admin ─────────────────────────────────────────────────────────────────────
 function openAdmin()  { document.getElementById("admin-overlay").classList.add("open"); }
 function closeAdmin() { document.getElementById("admin-overlay").classList.remove("open"); }
 function closeAdminIfOutside(e) { if (e.target === document.getElementById("admin-overlay")) closeAdmin(); }
@@ -1091,13 +1203,13 @@ async function uploadDocument() {
   finally { ubtn.disabled = false; ubtn.textContent = t("uploadButton"); }
 }
 
-// ── Boot ─────────────────────────────────────────────────────────────────────
 document.addEventListener("DOMContentLoaded", () => {
   applyI18n();
   setupDropZone();
   _loadSessions();
   renderHistory();
   renderChat();
+  renderHeader();
   renderFilesList();
   updateFileChip();
 
