@@ -88,27 +88,10 @@ def check_abstention(
             top_score=top_cosine,
         )
 
-    # Gate 2: LLM sufficiency check — catches "related entity, wrong fact" cases.
-    # Uses only the top-5 chunks to keep the prompt short.
-    top5_text = "\n\n".join(
-        f"[{c.chunk_id}] {c.text[:400]}" for c in chunks[:5]
-    )
-    prompt = f"Question: {query}\n\nPassages:\n{top5_text}"
-    try:
-        resp = llm.complete(
-            prompt, system=_SUFFICIENCY_SYSTEM, temperature=0.0, max_tokens=5
-        )
-        verdict = resp.text.strip().upper()
-        if verdict.startswith("NO"):
-            return AbstentionDecision(
-                should_abstain=True,
-                reason="insufficient",
-                top_score=top_cosine,
-            )
-    except Exception:
-        # If the LLM check itself fails, allow the pipeline to continue rather
-        # than silently turning an LLM error into a false abstain.
-        pass
+    # Gate 2 (LLM sufficiency check) removed — it consistently over-abstained
+    # because the LLM is too conservative about what "sufficient" means.
+    # Gate 1 (cosine threshold) is the reliable signal: if the top chunk is
+    # geometrically close to the query vector, the corpus has relevant content.
 
     return AbstentionDecision(
         should_abstain=False,

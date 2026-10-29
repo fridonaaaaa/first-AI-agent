@@ -35,7 +35,7 @@ services:
       - key: MAX_SUB_QUERIES
         value: "2"
       - key: ABSTENTION_THRESHOLD
-        value: "0.010"
+        value: "0.20"
       - key: RATE_LIMIT_PER_IP_PER_MINUTE
         value: "20"
       - key: DAILY_CAP_ASK
