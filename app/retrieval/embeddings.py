@@ -94,7 +94,7 @@ def _encode_hf_api(texts: list[str]) -> list[list[float]]:
             url,
             json={"inputs": texts, "options": {"wait_for_model": True}},
             headers=headers,
-            timeout=60.0,
+            timeout=20.0,
         )
         resp.raise_for_status()
     except httpx.HTTPStatusError as exc:

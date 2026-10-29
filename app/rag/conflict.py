@@ -75,8 +75,8 @@ def _check_pair(a: CandidateChunk, b: CandidateChunk, llm: LLMClient) -> Conflic
     )
 
 
-_MAX_PAIRS = 6  # hard cap on LLM calls; prevents O(n²) blowup on large result sets
-_TOP_N = 6      # only consider the top-N ranked chunks when building candidate pairs
+_MAX_PAIRS = 2  # keep total pipeline LLM calls under the 120 s frontend timeout
+_TOP_N = 4      # only consider the top-N ranked chunks when building candidate pairs
 
 
 def detect_conflicts(

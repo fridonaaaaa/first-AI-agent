@@ -31,9 +31,9 @@ services:
       - key: RRF_K
         value: "60"
       - key: MAX_TOOL_STEPS
-        value: "8"
+        value: "3"
       - key: MAX_SUB_QUERIES
-        value: "4"
+        value: "2"
       - key: ABSTENTION_THRESHOLD
         value: "0.010"
       - key: RATE_LIMIT_PER_IP_PER_MINUTE
