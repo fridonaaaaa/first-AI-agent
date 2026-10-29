@@ -290,7 +290,9 @@
       border-radius: var(--radius);
       font-size: 0.93rem;
       line-height: 1.65;
-      max-width: calc(100% - 52px);
+      overflow-wrap: break-word;
+      word-break: break-word;
+      white-space: pre-wrap;
     }
     .bubble.user-bubble {
       background: var(--blue);
@@ -314,7 +316,12 @@
     }
     .message-row.user .msg-time { text-align: right; }
 
-    .msg-wrapper { display: flex; flex-direction: column; max-width: calc(100% - 52px); }
+    .msg-wrapper {
+      display: flex;
+      flex-direction: column;
+      max-width: calc(100% - 52px);
+      min-width: 0;
+    }
     .message-row.user .msg-wrapper { align-items: flex-end; }
 
     /* Details inside AI bubble */
