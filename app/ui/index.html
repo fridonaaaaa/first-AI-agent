@@ -721,7 +721,6 @@ function _aiBubbleHTML(data) {
   const cleanAnswer = data.answer.replace(/\s*\[[^\]]*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}[^\]]*\]/gi, '');
   let inner = `<div class="answer-text">${escHtml(cleanAnswer)}</div>`;
   if (!data._error) {
-    inner += `<div class="bubble-meta"><span>${lang}</span><span>${t("stepsLabel")}: ${data.steps_used}</span></div>`;
     const sources = data.sources || [];
     if (sources.length > 0) {
       inner += `<details><summary>${t("sourcesTitle")} (${sources.length})</summary>${
@@ -730,7 +729,6 @@ function _aiBubbleHTML(data) {
           return `<div class="source-card">
             <div class="source-header">
               <span style="font-weight:600;font-size:.82rem">${docName}</span>
-              <span class="score-pill">${s.rrf_score.toFixed(4)}</span>
             </div>
             <div class="source-text">${escHtml(s.text.slice(0,280))}${s.text.length>280?"…":""}</div>
           </div>`;
@@ -905,11 +903,12 @@ async function submitQuestion() {
   const ta = document.getElementById("question");
   const q = ta.value.trim();
   if (!q) return;
+  const btn = document.getElementById("send-btn");
+  if (btn.disabled) return;
 
   const s = _currentSession();
   if (!s) return;
 
-  const btn = document.getElementById("send-btn");
   btn.disabled = true;
   ta.value = "";
   ta.style.height = "";
